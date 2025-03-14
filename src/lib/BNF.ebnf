@@ -10,7 +10,7 @@
               | <output_statement>
               | <semicolon_statement>
 
-<variable_declaration> ::= "+" <identifier> "~" <type> ";"
+<variable_declaration> ::= "+" <identifier> "~" <type> ("=" <expression>)? ";"
 
 <assignment> ::= "<-" <identifier> "=" <expression> ";"
 
