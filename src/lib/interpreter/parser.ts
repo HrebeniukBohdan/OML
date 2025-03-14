@@ -155,8 +155,10 @@ export class Parser {
       null,
       'Expect type declaration'
     ).value;
+    
     let value: ASTNode | null = null;
     if (this.match(TokenType.Equals)) {
+      this.advance();
       value = this.parseExpression();
     }
     return new VariableDeclarationNode(name, type, value);

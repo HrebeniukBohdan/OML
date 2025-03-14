@@ -138,6 +138,16 @@ describe("OML Interpreter Functional Tests", () => {
         const output = createInterpreter(code).getOutput();
         expect(output).toBe('5');
       });
+
+      it("should be defined with default assignment and equal 10", () => {
+        const code = `
+          +a~number = 3 * 2 + 4;
+          ^^a;
+        `;
+  
+        const output = createInterpreter(code).getOutput();
+        expect(output).toBe('10');
+      });
   
       it("should be defined and equal yes", () => {
         const code = `

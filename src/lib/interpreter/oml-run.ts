@@ -80,8 +80,9 @@ const omlCode = `
 
 /*
 `
-  +a~number;
-  <-a = -10 -10;
+  +a~number = -5;
+  // <-a = -10 -10;
+  ^^ a;
 `;
 
 `
