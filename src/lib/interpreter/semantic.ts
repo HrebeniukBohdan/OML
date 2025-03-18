@@ -64,7 +64,7 @@ export class SemanticAnalyzer implements ASTVisitor {
     if (this.currentScope.enclosingScope) {
       this.currentScope = this.currentScope.enclosingScope;
     } else {
-      throw new Error("No enclosing scope to exit to.");
+      throw new Error('No enclosing scope to exit to.');
     }
   }
 
@@ -114,23 +114,26 @@ export class SemanticAnalyzer implements ASTVisitor {
 
   visitFunctionDeclarationNode(node: FunctionDeclarationNode): void {
     if (this.functions.has(node.name)) {
-        throw new Error(`Function '${node.name}' is already declared.`);
+      throw new Error(`Function '${node.name}' is already declared.`);
     }
     this.functions.set(node.name, node);
     this.currentFunctionReturnType = node.returnType;
 
     this.enterScope();
 
-    node.parameters.forEach(param => {
-        this.declareVariable(param.name, param.type);
+    node.parameters.forEach((param) => {
+      this.declareVariable(param.name, param.type);
     });
 
     for (const statement of node.body) {
-        statement.accept(this);
+      statement.accept(this);
     }
 
-    if (this.currentFunctionReturnType !== 'void' && !this.hasReturnStatement(node.body)) {
-        throw new Error(`Missing return statement in function '${node.name}'.`);
+    if (
+      this.currentFunctionReturnType !== 'void' &&
+      !this.hasReturnStatement(node.body)
+    ) {
+      throw new Error(`Missing return statement in function '${node.name}'.`);
     }
 
     this.exitScope();
@@ -138,20 +141,23 @@ export class SemanticAnalyzer implements ASTVisitor {
   }
 
   private hasReturnStatement(statements: ASTNode[]): boolean {
-      for (const statement of statements) {
-          if (statement instanceof ReturnNode) {
-              return true;
-          } else if (statement instanceof BranchingNode) {
-              if (this.hasReturnStatement(statement.trueBranch) || this.hasReturnStatement(statement.falseBranch)) {
-                  return true;
-              }
-          } else if (statement instanceof LoopNode) {
-              if (this.hasReturnStatement(statement.body)) {
-                  return true;
-              }
-          }
+    for (const statement of statements) {
+      if (statement instanceof ReturnNode) {
+        return true;
+      } else if (statement instanceof BranchingNode) {
+        if (
+          this.hasReturnStatement(statement.trueBranch) ||
+          this.hasReturnStatement(statement.falseBranch)
+        ) {
+          return true;
+        }
+      } else if (statement instanceof LoopNode) {
+        if (this.hasReturnStatement(statement.body)) {
+          return true;
+        }
       }
-      return false;
+    }
+    return false;
   }
 
   visitFunctionCallNode(node: FunctionCallNode): string {
@@ -184,10 +190,15 @@ export class SemanticAnalyzer implements ASTVisitor {
     const rightType = node.right.accept(this);
 
     if (node.operator === '.') {
-      if (['string', 'number', 'bool'].includes(leftType) && ['string', 'number', 'bool'].includes(rightType)) {
-          return 'string';
+      if (
+        ['string', 'number', 'bool'].includes(leftType) &&
+        ['string', 'number', 'bool'].includes(rightType)
+      ) {
+        return 'string';
       } else {
-          throw new Error(`Invalid types for concatenation: '${leftType}' and '${rightType}'.`);
+        throw new Error(
+          `Invalid types for concatenation: '${leftType}' and '${rightType}'.`
+        );
       }
     }
 
@@ -241,7 +252,9 @@ export class SemanticAnalyzer implements ASTVisitor {
 
     if (type === 'string') {
       if (valueType !== 'number' && valueType !== 'string') {
-        throw new Error(`String constructor expects a number or string argument, but got ${valueType}.`);
+        throw new Error(
+          `String constructor expects a number or string argument, but got ${valueType}.`
+        );
       }
       return 'string';
     }
@@ -340,7 +353,9 @@ export class SemanticAnalyzer implements ASTVisitor {
 
     if (objectType === 'string') {
       if (indexType !== 'number') {
-        throw new Error(`Index for string must be of type 'number', but got '${indexType}'.`);
+        throw new Error(
+          `Index for string must be of type 'number', but got '${indexType}'.`
+        );
       }
       return;
     }
@@ -355,14 +370,23 @@ export class SemanticAnalyzer implements ASTVisitor {
 
     if (objectType === 'string') {
       if (indexType !== 'number') {
-        throw new Error(`Index for string must be of type 'number', but got '${indexType}'.`);
+        throw new Error(
+          `Index for string must be of type 'number', but got '${indexType}'.`
+        );
       }
       if (valueType !== 'string') {
-        throw new Error(`Value for string assignment must be a string type, but got '${valueType}'.`);
+        throw new Error(
+          `Value for string assignment must be a string type, but got '${valueType}'.`
+        );
       }
-      if (node.value instanceof LiteralNode && typeof node.value.value === 'string') {
+      if (
+        node.value instanceof LiteralNode &&
+        typeof node.value.value === 'string'
+      ) {
         if (node.value.value.length !== 1) {
-          throw new Error(`Value for string assignment must be a single character, but got '${node.value.value}'.`);
+          throw new Error(
+            `Value for string assignment must be a single character, but got '${node.value.value}'.`
+          );
         }
       }
       return;
@@ -371,4 +395,3 @@ export class SemanticAnalyzer implements ASTVisitor {
     throw new Error(`Unsupported index assignment on type '${objectType}'.`);
   }
 }
-

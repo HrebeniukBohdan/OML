@@ -1,8 +1,33 @@
+/**
+ * Represents an error that occurs during the tokenization process.
+ * 
+ * @extends {Error}
+ */
 export class TokenizationError extends Error {
+  /**
+   * The line number where the error occurred.
+   */
   public line: number;
+
+  /**
+   * The column number where the error occurred.
+   */
   public column: number;
+
+  /**
+   * The unknown token that caused the error.
+   */
   public unknownToken: string;
 
+  /**
+   * Creates an instance of TokenizationError.
+   * 
+   * @param message - The error message.
+   * @param snippet - The code snippet where the error occurred.
+   * @param line - The line number where the error occurred.
+   * @param column - The column number where the error occurred.
+   * @param unknownToken - The unknown token that caused the error.
+   */
   constructor(message: string, snippet: string, line: number, column: number, unknownToken: string) {
     super(`${message}\nContext:\n${snippet}\nAt line ${line}, column ${column}`);
     this.name = 'TokenizationError';

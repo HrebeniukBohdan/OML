@@ -3,15 +3,7 @@ import { Parser } from './parser';
 import { JSONVisitor, OMLInterpreter, OMLToTypeScriptVisitor } from './visitors';
 import { SemanticAnalyzer } from './semantic';
 
-const omlCode =  `
-+str~string;
-<-str = "Hello";
-str->(1) = "a";
-^^str;
-`;
-
-
-`
+const omlCode = `
   +a~number;
 
   @abs::<x~number> -> number |

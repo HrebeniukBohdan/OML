@@ -4,21 +4,25 @@ export abstract class ASTNode {
 
 export class ProgramNode extends ASTNode {
   constructor(public statements: ASTNode[]) {
-      super();
+    super();
   }
 
   accept(visitor: ASTVisitor) {
-      return visitor.visitProgramNode(this);
+    return visitor.visitProgramNode(this);
   }
 }
 
 export class VariableDeclarationNode extends ASTNode {
-  constructor(public name: string, public type: string, public value: ASTNode | null) {
-      super();
+  constructor(
+    public name: string,
+    public type: string,
+    public value: ASTNode | null
+  ) {
+    super();
   }
 
   accept(visitor: ASTVisitor) {
-      return visitor.visitVariableDeclarationNode(this);
+    return visitor.visitVariableDeclarationNode(this);
   }
 }
 
@@ -27,33 +31,37 @@ export class AssignmentNode extends ASTNode {
   public value: ASTNode;
 
   constructor(nameOrObjectPath: ASTNode, value: ASTNode) {
-      super();
-      this.nameOrObjectPath = nameOrObjectPath;
-      this.value = value;
+    super();
+    this.nameOrObjectPath = nameOrObjectPath;
+    this.value = value;
   }
 
   accept(visitor: ASTVisitor): any {
-      return visitor.visitAssignmentNode(this);
+    return visitor.visitAssignmentNode(this);
   }
 }
 
 export class BinaryExpressionNode extends ASTNode {
-  constructor(public left: ASTNode, public operator: string, public right: ASTNode) {
-      super();
+  constructor(
+    public left: ASTNode,
+    public operator: string,
+    public right: ASTNode
+  ) {
+    super();
   }
 
   accept(visitor: ASTVisitor) {
-      return visitor.visitBinaryExpressionNode(this);
+    return visitor.visitBinaryExpressionNode(this);
   }
 }
 
 export class LiteralNode extends ASTNode {
   constructor(public value: any) {
-      super();
+    super();
   }
 
   accept(visitor: ASTVisitor) {
-      return visitor.visitLiteralNode(this);
+    return visitor.visitLiteralNode(this);
   }
 }
 
@@ -72,11 +80,11 @@ export class ObjectLiteralNode extends ASTNode {
 
 export class IdentifierNode extends ASTNode {
   constructor(public name: string) {
-      super();
+    super();
   }
 
   accept(visitor: ASTVisitor) {
-      return visitor.visitIdentifierNode(this);
+    return visitor.visitIdentifierNode(this);
   }
 }
 
@@ -106,7 +114,11 @@ export class IndexAccessNode extends ASTNode {
 }
 
 export class IndexAssignmentNode extends ASTNode {
-  constructor(public object: ASTNode, public index: ASTNode, public value: ASTNode) {
+  constructor(
+    public object: ASTNode,
+    public index: ASTNode,
+    public value: ASTNode
+  ) {
     super();
   }
 
@@ -118,7 +130,7 @@ export class IndexAssignmentNode extends ASTNode {
 export class FunctionDeclarationNode extends ASTNode {
   constructor(
     public name: string,
-    public parameters: { name: string, type: string }[],
+    public parameters: { name: string; type: string }[],
     public returnType: string,
     public body: ASTNode[]
   ) {
@@ -126,44 +138,41 @@ export class FunctionDeclarationNode extends ASTNode {
   }
 
   accept(visitor: ASTVisitor) {
-      return visitor.visitFunctionDeclarationNode(this);
+    return visitor.visitFunctionDeclarationNode(this);
   }
 }
 
 export class FunctionCallNode extends ASTNode {
   constructor(public name: string, public args: ASTNode[]) {
-      super();
+    super();
   }
 
   accept(visitor: ASTVisitor) {
-      return visitor.visitFunctionCallNode(this);
+    return visitor.visitFunctionCallNode(this);
   }
 }
 
 export class BranchingNode extends ASTNode {
   constructor(
-      public condition: ASTNode,
-      public trueBranch: ASTNode[],
-      public falseBranch: ASTNode[]
+    public condition: ASTNode,
+    public trueBranch: ASTNode[],
+    public falseBranch: ASTNode[]
   ) {
-      super();
+    super();
   }
 
   accept(visitor: ASTVisitor) {
-      return visitor.visitBranchingNode(this);
+    return visitor.visitBranchingNode(this);
   }
 }
 
 export class LoopNode extends ASTNode {
-  constructor(
-      public condition: ASTNode,
-      public body: ASTNode[]
-  ) {
-      super();
+  constructor(public condition: ASTNode, public body: ASTNode[]) {
+    super();
   }
 
   accept(visitor: ASTVisitor) {
-      return visitor.visitLoopNode(this);
+    return visitor.visitLoopNode(this);
   }
 }
 

@@ -13,7 +13,7 @@ describe("OML Interpreter Functional Tests", () => {
     // Parsing
     const parser = new Parser(code, tokens);
     const ast: ASTNode = parser.parse();
-    // Семантичний аналіз
+    // Semantic analysis
     const semanticAnalyzer = new SemanticAnalyzer();
     semanticAnalyzer.visitProgramNode(ast as ProgramNode);
     const interpreter = new OMLInterpreter();

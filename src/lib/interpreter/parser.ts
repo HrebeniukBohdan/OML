@@ -65,7 +65,10 @@ export class Parser {
       statement = this.parseFunctionCall();
     } else if (this.match(TokenType.Assignment)) {
       statement = this.parseAssignment();
-    } else if (this.match(TokenType.Identifier) && this.checkNext(TokenType.AccessOperator)) {
+    } else if (
+      this.match(TokenType.Identifier) &&
+      this.checkNext(TokenType.AccessOperator)
+    ) {
       statement = this.parseIndexAssignment();
     } else if (this.match(TokenType.Output)) {
       statement = this.parseOutput();
@@ -149,7 +152,7 @@ export class Parser {
       null,
       'Expect type declaration'
     ).value;
-    
+
     let value: ASTNode | null = null;
     if (this.match(TokenType.Equals)) {
       this.advance();
@@ -447,7 +450,10 @@ export class Parser {
       return this.parseTypeConstruction();
     }
 
-    if (this.match(TokenType.Identifier) && this.checkNext(TokenType.AccessOperator)) {
+    if (
+      this.match(TokenType.Identifier) &&
+      this.checkNext(TokenType.AccessOperator)
+    ) {
       return this.parseIndexAccess();
     }
     if (this.match(TokenType.Identifier)) {
@@ -472,8 +478,7 @@ export class Parser {
       this.checkNext(TokenType.Colon, 2)
     ) {
       return this.parseObjectLiteral();
-    }
-    else if (this.match(TokenType.Punctuation) && this.peek().value === '(') {
+    } else if (this.match(TokenType.Punctuation) && this.peek().value === '(') {
       this.consume(TokenType.Punctuation, '(', "Expect '(' to open expression");
       const expr = this.parseExpression();
       this.consume(
@@ -509,16 +514,28 @@ export class Parser {
       'Expect type "string"'
     ).value;
 
-    this.consume(TokenType.Punctuation, '(', "Expect '(' to open type construction");
+    this.consume(
+      TokenType.Punctuation,
+      '(',
+      "Expect '(' to open type construction"
+    );
     const value = this.parseExpression();
-    this.consume(TokenType.Punctuation, ')', "Expect ')' to close type construction");
+    this.consume(
+      TokenType.Punctuation,
+      ')',
+      "Expect ')' to close type construction"
+    );
 
     return new TypeConstructionNode(type, value);
   }
 
   private parseIndexAccess(): IndexAccessNode {
     const objectId = this.parseIdentifier();
-    this.consume(TokenType.AccessOperator, '->', "Expect '->' for index access");
+    this.consume(
+      TokenType.AccessOperator,
+      '->',
+      "Expect '->' for index access"
+    );
     this.consume(TokenType.Punctuation, '(', "Expect '(' for index access");
     const index = this.parseExpression();
     this.consume(TokenType.Punctuation, ')', "Expect ')' after index");
@@ -527,7 +544,11 @@ export class Parser {
 
   private parseIndexAssignment(): IndexAssignmentNode {
     const objectId = this.parseIdentifier();
-    this.consume(TokenType.AccessOperator, '->', "Expect '->' for index access");
+    this.consume(
+      TokenType.AccessOperator,
+      '->',
+      "Expect '->' for index access"
+    );
     this.consume(TokenType.Punctuation, '(', "Expect '(' for index access");
     const index = this.parseExpression();
     this.consume(TokenType.Punctuation, ')', "Expect ')' after index");
@@ -535,7 +556,7 @@ export class Parser {
     const value = this.parseExpression();
     return new IndexAssignmentNode(objectId, index, value);
   }
-  
+
   private parseObjectLiteral(): ObjectLiteralNode {
     const properties: { [key: string]: ASTNode } = {};
 
