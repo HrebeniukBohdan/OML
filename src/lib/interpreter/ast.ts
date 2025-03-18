@@ -28,8 +28,8 @@ export class AssignmentNode extends ASTNode {
 
   constructor(nameOrObjectPath: ASTNode, value: ASTNode) {
       super();
-      this.nameOrObjectPath = nameOrObjectPath; // Ліва частина: може бути або IdentifierNode, або ObjectAccessNode
-      this.value = value; // Права частина: вираз для присвоєння
+      this.nameOrObjectPath = nameOrObjectPath;
+      this.value = value;
   }
 
   accept(visitor: ASTVisitor): any {
@@ -57,7 +57,6 @@ export class LiteralNode extends ASTNode {
   }
 }
 
-// AST Node для об'єктних літералів
 export class ObjectLiteralNode extends ASTNode {
   properties: { [key: string]: ASTNode };
 
@@ -81,15 +80,14 @@ export class IdentifierNode extends ASTNode {
   }
 }
 
-// Вузол для доступу до властивості об'єкта
 export class ObjectAccessNode extends ASTNode {
-  public object: ASTNode;   // Це може бути або змінна, або інший ObjectAccessNode (для вкладеного доступу)
-  public property: string;  // Ім'я властивості, до якої ми отримуємо доступ
+  public object: ASTNode;
+  public property: string;
 
   constructor(object: ASTNode, property: string) {
     super();
-    this.object = object;   // Об'єкт, до якого ми отримуємо доступ
-    this.property = property; // Властивість об'єкта
+    this.object = object;
+    this.property = property;
   }
 
   accept(visitor: ASTVisitor): any {
@@ -120,7 +118,7 @@ export class IndexAssignmentNode extends ASTNode {
 export class FunctionDeclarationNode extends ASTNode {
   constructor(
     public name: string,
-    public parameters: { name: string, type: string }[], // Зберігаємо типи параметрів
+    public parameters: { name: string, type: string }[],
     public returnType: string,
     public body: ASTNode[]
   ) {
@@ -144,9 +142,9 @@ export class FunctionCallNode extends ASTNode {
 
 export class BranchingNode extends ASTNode {
   constructor(
-      public condition: ASTNode,      // Умова розгалуження
-      public trueBranch: ASTNode[],   // Гілка для істинної умови
-      public falseBranch: ASTNode[]   // Гілка для хибної умови (else)
+      public condition: ASTNode,
+      public trueBranch: ASTNode[],
+      public falseBranch: ASTNode[]
   ) {
       super();
   }
@@ -158,8 +156,8 @@ export class BranchingNode extends ASTNode {
 
 export class LoopNode extends ASTNode {
   constructor(
-      public condition: ASTNode,  // Умова циклу
-      public body: ASTNode[]      // Тіло циклу
+      public condition: ASTNode,
+      public body: ASTNode[]
   ) {
       super();
   }

@@ -25,7 +25,7 @@ import { Token, TokenType } from './tokenizer';
 export class Parser {
   private tokens: Token[];
   private current: number = 0;
-  private contextStack: string[] = []; // Стек контекстів
+  private contextStack: string[] = [];
   private code: string;
 
   constructor(code: string, tokens: Token[]) {
@@ -37,7 +37,6 @@ export class Parser {
     return this.parseProgram();
   }
 
-  // Парсинг програми: набір інструкцій або функцій
   private parseProgram(): ASTNode {
     const statements = [];
     while (!this.isAtEnd()) {
@@ -50,8 +49,8 @@ export class Parser {
     const semicolonStatement: ASTNode = this.parseSemicolonStatement();
     if (semicolonStatement) return semicolonStatement;
     if (this.match(TokenType.AtSymbol)) return this.parseFunctionDeclaration();
-    if (this.match(TokenType.Branching)) return this.parseBranching(); // Додаємо розгалуження
-    if (this.match(TokenType.Loop)) return this.parseLoop(); // Додаємо цикл
+    if (this.match(TokenType.Branching)) return this.parseBranching();
+    if (this.match(TokenType.Loop)) return this.parseLoop();
     if (this.match(TokenType.Colon)) return this.parseExpression();
 
     return this.throwErrorWithContext('Unexpected statement');
@@ -60,24 +59,15 @@ export class Parser {
   private parseSemicolonStatement(): ASTNode {
     let statement: ASTNode | null = null;
 
-    // Парсинг оголошення змінної
     if (this.match(TokenType.Operator) && this.peek().value === '+') {
       statement = this.parseVariableDeclaration();
-    }
-    // Парсинг виклику функції
-    else if (this.match(TokenType.Addition)) {
+    } else if (this.match(TokenType.Addition)) {
       statement = this.parseFunctionCall();
-    }
-    // Парсинг присвоєння
-    else if (this.match(TokenType.Assignment)) {
+    } else if (this.match(TokenType.Assignment)) {
       statement = this.parseAssignment();
-    }
-    // Парсинг індексованого присвоєння
-    else if (this.match(TokenType.Identifier) && this.checkNext(TokenType.AccessOperator)) {
+    } else if (this.match(TokenType.Identifier) && this.checkNext(TokenType.AccessOperator)) {
       statement = this.parseIndexAssignment();
-    }
-    // Парсинг виводу
-    else if (this.match(TokenType.Output)) {
+    } else if (this.match(TokenType.Output)) {
       statement = this.parseOutput();
     } else if (
       this.match(TokenType.AtSymbol) &&
@@ -87,7 +77,6 @@ export class Parser {
       statement = this.parseReturnStatement();
     }
 
-    // Додаємо перевірку на закінчення інструкції символом ';'
     if (statement) {
       this.consume(
         TokenType.Punctuation,
@@ -111,7 +100,6 @@ export class Parser {
 
     const trueBranch = this.parseBlock();
 
-    // Перевіряємо наявність else блоку
     let falseBranch: ASTNode[] = [];
     if (this.match(TokenType.Colon)) {
       this.advance();
@@ -140,7 +128,6 @@ export class Parser {
     return new LoopNode(condition, body);
   }
 
-  // Парсинг оголошення змінної
   private parseVariableDeclaration(): ASTNode {
     this.consume(
       TokenType.Operator,
@@ -171,15 +158,13 @@ export class Parser {
     return new VariableDeclarationNode(name, type, value);
   }
 
-  // Парсинг присвоєння
   private parseAssignment(): ASTNode {
     this.consume(TokenType.Assignment, null, "Expect '<-' for assignment");
 
-    // Ліва частина: має бути або ідентифікатором, або доступом до властивості об'єкта
     const name: ASTNode = this.parseIdentifierOrObjectAccess();
 
     this.consume(TokenType.Equals, null, "Expect '=' after variable name");
-    const value = this.parseExpression(); // Права частина: довільний вираз
+    const value = this.parseExpression();
 
     return new AssignmentNode(name, value);
   }
@@ -193,15 +178,13 @@ export class Parser {
       ).value
     );
 
-    return identifier; // Якщо це просто ідентифікатор
+    return identifier;
   }
 
-  // Парсинг ідентифікатора або доступу до властивості об'єкта
   private parseIdentifierOrObjectAccess(): ASTNode {
     const identifier = this.parseIdentifier();
 
     if (this.match(TokenType.AccessOperator)) {
-      // Перевірка на оператор '->'
       this.consume(
         TokenType.AccessOperator,
         '->',
@@ -212,13 +195,12 @@ export class Parser {
         null,
         'Expect object property name'
       ).value;
-      return new ObjectAccessNode(identifier, property); // Повертаємо вузол доступу до властивості об'єкта
+      return new ObjectAccessNode(identifier, property);
     }
 
-    return identifier; // Якщо це просто ідентифікатор
+    return identifier;
   }
 
-  // Парсинг функції
   private parseFunctionDeclaration(): ASTNode {
     this.contextStack.push('function');
     this.consume(
@@ -248,7 +230,6 @@ export class Parser {
     return new FunctionDeclarationNode(name, parameters, returnType, body);
   }
 
-  // Парсинг виклику функції
   private parseFunctionCall(): ASTNode {
     this.consume(TokenType.Addition, '<>', "Expect '<>' for function call");
     const name = this.consume(
@@ -275,7 +256,6 @@ export class Parser {
     return new FunctionCallNode(name, args);
   }
 
-  // Парсинг блоку (тіло функції або інструкції)
   private parseBlock(): ASTNode[] {
     this.consume(TokenType.Punctuation, '|', "Expect '|' to start block");
     const statements = [];
@@ -307,22 +287,20 @@ export class Parser {
       '<-',
       "Expect '<-' for return assignment"
     );
-    const returnValue = this.parseExpression(); // Обчислення виразу для повернення
-    return new ReturnNode(returnValue); // Створення вузла повернення
+    const returnValue = this.parseExpression();
+    return new ReturnNode(returnValue);
   }
 
-  // Парсинг параметрів функції
   private parseParameters(): { name: string; type: string }[] {
     const parameters: { name: string; type: string }[] = [];
 
-    // Перевіряємо, чи після '::' йде ключове слово "none", що означає відсутність параметрів
     if (this.match(TokenType.None)) {
       this.consume(
         TokenType.None,
         null,
         "Expect 'none' in a case when function has no parameters"
       );
-      return parameters; // Повертаємо порожній масив параметрів, якщо є ключове слово "none"
+      return parameters;
     }
 
     this.consume(
@@ -331,7 +309,6 @@ export class Parser {
       "Expect '<' to start parameter list"
     );
 
-    // Парсимо список параметрів
     do {
       const paramName = this.consume(
         TokenType.Identifier,
@@ -363,7 +340,6 @@ export class Parser {
     return parameters;
   }
 
-  // Парсинг аргументів функції
   private parseArguments(): ASTNode[] {
     const args = [];
     if (!this.check(TokenType.Punctuation)) {
@@ -379,10 +355,8 @@ export class Parser {
   }
 
   private parseExpression(): ASTNode {
-    // Починаємо з парсингу базового елемента
     let expression = this.parsePrimaryExpression();
 
-    // Якщо є оператори, парсимо бінарні вирази
     if (
       this.match(TokenType.Operator) ||
       this.match(TokenType.LogicOperator) ||
@@ -400,11 +374,10 @@ export class Parser {
       this.match(TokenType.LogicOperator) ||
       this.match(TokenType.Dot)
     ) {
-      const operator = this.advance().value; // Отримуємо оператор
+      const operator = this.advance().value;
       const precedence = this.getOperatorPrecedence(operator);
-      let right = this.parsePrimaryExpression(); // Парсимо правий операнд
+      let right = this.parsePrimaryExpression();
 
-      // Якщо у правого виразу є оператор з вищим пріоритетом, парсимо його
       while (
         !this.isAtEnd() &&
         this.getOperatorPrecedence(this.peek().value) > precedence
@@ -412,60 +385,58 @@ export class Parser {
         right = this.parseBinaryExpression(right);
       }
 
-      left = new BinaryExpressionNode(left, operator, right); // Створюємо вузол для бінарного виразу
+      left = new BinaryExpressionNode(left, operator, right);
     }
 
     return left;
   }
 
-  // Визначаємо пріоритет операторів
   private getOperatorPrecedence(operator: string): number {
     switch (operator) {
       case '||':
-        return 1; // Нижчий пріоритет для логічного OR
+        return 1;
       case '&&':
-        return 2; // Вищий пріоритет для логічного AND
+        return 2;
       case '==':
       case '!=':
-        return 3; // Пріоритет порівняння
+        return 3;
       case '<':
       case '>':
       case '<=':
       case '>=':
-        return 4; // Пріоритет порівняння чисел
+        return 4;
       case '.':
-        return 5; // Пріоритет конкатенації (нижчий за арифметичні операції)
+        return 5;
       case '+':
       case '-':
-        return 6; // Пріоритет для додавання і віднімання
+        return 6;
       case '*':
       case '/':
-        return 7; // Пріоритет для множення і ділення
+        return 7;
       default:
-        return 0; // Інші оператори
+        return 0;
     }
   }
 
   private parsePrimaryExpression(): ASTNode {
-    // Якщо зустрічається унарний мінус
     if (
       this.match(TokenType.Operator) &&
       (this.peek().value === '-' || this.peek().value === '!')
     ) {
-      const operator = this.advance().value; // Отримуємо оператор (- або !)
-      const operand = this.parsePrimaryExpression(); // Рекурсивно парсимо операнд
+      const operator = this.advance().value;
+      const operand = this.parsePrimaryExpression();
       if (
         !(operand instanceof LiteralNode || operand instanceof IdentifierNode)
       ) {
         throw new Error(
-          'Унарні операції підтримуються тільки для літералів і змінних'
+          'Unary operations are only supported for literals and variables'
         );
       }
-      return new UnaryExpressionNode(operator, operand); // Повертаємо унарний вузол
+      return new UnaryExpressionNode(operator, operand);
     }
     if (this.match(TokenType.Bool)) {
       const value = this.advance().value === 'yes';
-      return new LiteralNode(value); // true для "yes" і false для "no"
+      return new LiteralNode(value);
     }
     if (this.match(TokenType.Number))
       return new LiteralNode(parseFloat(this.advance().value));
@@ -476,27 +447,24 @@ export class Parser {
       return this.parseTypeConstruction();
     }
 
-    // Якщо зустрічаємо ідентифікатор, перевіряємо, чи є доступ до об'єкта (Object Path)
     if (this.match(TokenType.Identifier) && this.checkNext(TokenType.AccessOperator)) {
       return this.parseIndexAccess();
     }
     if (this.match(TokenType.Identifier)) {
       let node: ASTNode = new IdentifierNode(this.advance().value);
 
-      // Якщо далі йде оператор доступу '->', це означає, що ми маємо доступ до властивості об'єкта
       while (this.match(TokenType.AccessOperator) && this.advance()) {
         const property = this.consume(
           TokenType.Identifier,
           null,
           "Expect property name after '->'"
         );
-        node = new ObjectAccessNode(node, property.value); // Створюємо вузол доступу до об'єкта
+        node = new ObjectAccessNode(node, property.value);
       }
 
       return node;
     }
 
-    // Логіка для об'єктних літералів
     if (
       this.match(TokenType.Punctuation) &&
       this.peek().value === '(' &&
@@ -505,7 +473,6 @@ export class Parser {
     ) {
       return this.parseObjectLiteral();
     }
-    // Логіка для виразів в дужках
     else if (this.match(TokenType.Punctuation) && this.peek().value === '(') {
       this.consume(TokenType.Punctuation, '(', "Expect '(' to open expression");
       const expr = this.parseExpression();
@@ -517,7 +484,6 @@ export class Parser {
       return expr;
     }
 
-    // Логіка для виразів в дужках
     if (this.match(TokenType.Punctuation) && this.peek().value === '(') {
       this.consume(TokenType.Punctuation, '(', "Expect '(' to open expression");
       const expr = this.parseExpression();
@@ -529,7 +495,6 @@ export class Parser {
       return expr;
     }
 
-    // Логіка для виклику функції в якості виразу
     if (this.match(TokenType.Addition)) {
       return this.parseFunctionCall();
     }
@@ -551,7 +516,6 @@ export class Parser {
     return new TypeConstructionNode(type, value);
   }
 
-  // Парсинг індексованого доступу
   private parseIndexAccess(): IndexAccessNode {
     const objectId = this.parseIdentifier();
     this.consume(TokenType.AccessOperator, '->', "Expect '->' for index access");
@@ -561,7 +525,6 @@ export class Parser {
     return new IndexAccessNode(objectId, index);
   }
 
-  // Парсинг індексованого присвоєння
   private parseIndexAssignment(): IndexAssignmentNode {
     const objectId = this.parseIdentifier();
     this.consume(TokenType.AccessOperator, '->', "Expect '->' for index access");
@@ -582,15 +545,14 @@ export class Parser {
       "Expect '(' to start object literal"
     );
 
-    // Парсимо властивості об'єкта
     do {
       const key = this.consume(
         TokenType.Identifier,
         null,
         'Expect object property name'
       ).value;
-      this.consume(TokenType.Colon, ':', "Expect ':' after property name"); // Використовуємо TokenType.Colon для ':'
-      const value = this.parseExpression(); // Значення властивості може бути будь-яким виразом
+      this.consume(TokenType.Colon, ':', "Expect ':' after property name");
+      const value = this.parseExpression();
       properties[key] = value;
     } while (
       this.match(TokenType.Punctuation) &&
@@ -611,14 +573,12 @@ export class Parser {
     return new ObjectLiteralNode(properties);
   }
 
-  // Парсинг виводу
   private parseOutput(): ASTNode {
     this.consume(TokenType.Output, '^^', "Expect '^^' for output");
     const value = this.parseExpression();
-    return new OutputNode(value); // Тепер створюємо вузол OutputNode
+    return new OutputNode(value);
   }
 
-  // Оновлений метод consume
   private consume(
     type: TokenType,
     expectedValue: string | null,
@@ -673,19 +633,15 @@ export class Parser {
   private throwErrorWithContext(message: string): never {
     const token = this.tokens[this.current];
 
-    // Підраховуємо початок і кінець фрагменту
-    const snippetStart = Math.max(0, token.position - 40); // 40 символів до токена
-    const snippetEnd = Math.min(this.code.length, token.position + 40); // 40 символів після токена
+    const snippetStart = Math.max(0, token.position - 40);
+    const snippetEnd = Math.min(this.code.length, token.position + 40);
 
-    const snippetBefore = this.code.slice(snippetStart, token.position); // Фрагмент перед токеном
-    const unknownChar = this.code[token.position]; // Проблемний символ
-    const snippetAfter = this.code.slice(token.position + 1, snippetEnd); // Фрагмент після токена
+    const snippetBefore = this.code.slice(snippetStart, token.position);
+    const unknownChar = this.code[token.position];
+    const snippetAfter = this.code.slice(token.position + 1, snippetEnd);
 
-    // Додаємо три крапки на початок, якщо перед snippet є ще текст
     const leadingEllipsis = snippetStart > 0 ? '...' : '';
-    // Додаємо три крапки в кінець, якщо після snippet є ще текст
     const trailingEllipsis = snippetEnd < this.code.length ? '...' : '';
-    // Формуємо сніпет з крапками
     const errorSnippet = `${leadingEllipsis}${snippetBefore}[${unknownChar}]${snippetAfter}${trailingEllipsis}`;
 
     throw new SyntaxError(

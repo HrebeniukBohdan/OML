@@ -1,10 +1,8 @@
-// Імпортуємо всі необхідні класи
 import { Tokenizer } from './tokenizer';
 import { Parser } from './parser';
-import { JSONVisitor, OMLInterpreter, OMLToTypeScriptVisitor } from './visitors';  // Реалізація, яку ми створили раніше
+import { JSONVisitor, OMLInterpreter, OMLToTypeScriptVisitor } from './visitors';
 import { SemanticAnalyzer } from './semantic';
 
-// Шматок коду на OML, який ми будемо парсити
 const omlCode =  `
 +str~string;
 <-str = "Hello";
@@ -122,28 +120,29 @@ str->(1) = "a";
 `;
 */
 
-// Створюємо екземпляр токенайзера і отримуємо список токенів
+// Tokenization
 const tokenizer = new Tokenizer(omlCode);
 const tokens = tokenizer.tokenize();
 
-// Створюємо екземпляр парсера і парсимо список токенів у AST
+// Parsing & AST
 const parser = new Parser(omlCode, tokens);
 const ast = parser.parse();
 
-// Cемантичний аналіз
+// Semantic analysis
 const semanticAnalyzer = new SemanticAnalyzer();
 ast.accept(semanticAnalyzer);
 
-// Створюємо екземпляр JSONVisitor і використовуємо його для виведення AST у форматі JSON
+// JSON & TypeScript code generation
 const jsonVisitor = new JSONVisitor();
 const jsonAst = ast.accept(jsonVisitor);
 const tsVisitor = new OMLToTypeScriptVisitor();
 const tsCode = ast.accept(tsVisitor);
-//const pythonCode = ast.accept(new ASTTreeVisitor());
+
+// Interpretation
 const interpreter = new OMLInterpreter();
 ast.accept(interpreter);
 
-// Виводимо результат у консоль
+// Console output
 console.log(JSON.stringify(jsonAst, null, 2));
 console.log();
 console.log(tsCode);

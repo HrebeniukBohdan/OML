@@ -46,7 +46,6 @@ export class SymbolTable {
     return null;
   }
 
-  // Перевіряє наявність змінної тільки в поточному скоупі
   public isDeclaredInCurrentScope(name: string): boolean {
     return this.symbols.has(name);
   }
@@ -54,27 +53,27 @@ export class SymbolTable {
 
 export class SemanticAnalyzer implements ASTVisitor {
   private currentScope: SymbolTable = new SymbolTable();
-  private functions: Map<string, FunctionDeclarationNode> = new Map(); // Таблиця функцій
-  private currentFunctionReturnType: string | null = null; // Для перевірки типу повернення функції
+  private functions: Map<string, FunctionDeclarationNode> = new Map();
+  private currentFunctionReturnType: string | null = null;
 
   private enterScope(): void {
-    this.currentScope = new SymbolTable(this.currentScope); // Створюємо новий вкладений скоуп
+    this.currentScope = new SymbolTable(this.currentScope);
   }
 
   private exitScope(): void {
     if (this.currentScope.enclosingScope) {
-      this.currentScope = this.currentScope.enclosingScope; // Повертаємось до зовнішнього скоупу
+      this.currentScope = this.currentScope.enclosingScope;
     } else {
       throw new Error("No enclosing scope to exit to.");
     }
   }
 
   private declareVariable(name: string, type: string): void {
-    this.currentScope.declareVariable(name, type); // Оголошуємо змінну у поточному скоупі
+    this.currentScope.declareVariable(name, type);
   }
 
   private lookupVariable(name: string): string | null {
-    return this.currentScope.lookupVariable(name); // Шукаємо змінну у поточному скоупі і в усіх зовнішніх
+    return this.currentScope.lookupVariable(name);
   }
 
   visitProgramNode(node: ProgramNode): void {
@@ -84,7 +83,6 @@ export class SemanticAnalyzer implements ASTVisitor {
   }
 
   visitVariableDeclarationNode(node: VariableDeclarationNode): void {
-    // Перевіряємо наявність змінної тільки в поточному скоупі
     if (this.currentScope.isDeclaredInCurrentScope(node.name)) {
       throw new Error(`Variable '${node.name}' is already declared.`);
     }
@@ -123,17 +121,14 @@ export class SemanticAnalyzer implements ASTVisitor {
 
     this.enterScope();
 
-    // Оголошуємо параметри у функціональному скоупі
     node.parameters.forEach(param => {
         this.declareVariable(param.name, param.type);
     });
 
-    // Перевірка всіх операторів у тілі функції
     for (const statement of node.body) {
         statement.accept(this);
     }
 
-    // Використовуємо метод для перевірки наявності return
     if (this.currentFunctionReturnType !== 'void' && !this.hasReturnStatement(node.body)) {
         throw new Error(`Missing return statement in function '${node.name}'.`);
     }
@@ -142,18 +137,15 @@ export class SemanticAnalyzer implements ASTVisitor {
     this.currentFunctionReturnType = null;
   }
 
-  // Метод для рекурсивної перевірки наявності ReturnNode
   private hasReturnStatement(statements: ASTNode[]): boolean {
       for (const statement of statements) {
           if (statement instanceof ReturnNode) {
               return true;
           } else if (statement instanceof BranchingNode) {
-              // Перевіряємо true і false гілки розгалуження
               if (this.hasReturnStatement(statement.trueBranch) || this.hasReturnStatement(statement.falseBranch)) {
                   return true;
               }
           } else if (statement instanceof LoopNode) {
-              // Перевірка тіла циклу
               if (this.hasReturnStatement(statement.body)) {
                   return true;
               }
@@ -193,7 +185,7 @@ export class SemanticAnalyzer implements ASTVisitor {
 
     if (node.operator === '.') {
       if (['string', 'number', 'bool'].includes(leftType) && ['string', 'number', 'bool'].includes(rightType)) {
-          return 'string';  // Конкатенація завжди повертає рядок
+          return 'string';
       } else {
           throw new Error(`Invalid types for concatenation: '${leftType}' and '${rightType}'.`);
       }
@@ -313,7 +305,6 @@ export class SemanticAnalyzer implements ASTVisitor {
       );
     }
 
-    // Входимо у вкладений скоуп для гілок розгалуження
     this.enterScope();
     node.trueBranch.forEach((stmt) => stmt.accept(this));
     this.exitScope();
