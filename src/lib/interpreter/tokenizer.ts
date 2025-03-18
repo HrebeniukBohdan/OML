@@ -150,6 +150,7 @@ export class Tokenizer {
 }
 
 // Usage of Tokenizer
+/*
 const code = `
 @main::none -> void |
   +a~number;
@@ -176,3 +177,4 @@ try {
 } catch (e) {
   console.error(e.message);
 }
+*/
