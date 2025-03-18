@@ -97,6 +97,26 @@ export class ObjectAccessNode extends ASTNode {
   }
 }
 
+export class IndexAccessNode extends ASTNode {
+  constructor(public object: ASTNode, public index: ASTNode) {
+    super();
+  }
+
+  accept(visitor: ASTVisitor): any {
+    return visitor.visitIndexAccessNode(this);
+  }
+}
+
+export class IndexAssignmentNode extends ASTNode {
+  constructor(public object: ASTNode, public index: ASTNode, public value: ASTNode) {
+    super();
+  }
+
+  accept(visitor: ASTVisitor): any {
+    return visitor.visitIndexAssignmentNode(this);
+  }
+}
+
 export class FunctionDeclarationNode extends ASTNode {
   constructor(
     public name: string,
@@ -187,6 +207,16 @@ export class ReturnNode extends ASTNode {
   }
 }
 
+export class TypeConstructionNode extends ASTNode {
+  constructor(public type: string, public value: ASTNode) {
+    super();
+  }
+
+  accept(visitor: ASTVisitor): any {
+    return visitor.visitTypeConstructionNode(this);
+  }
+}
+
 export interface ASTVisitor {
   visitProgramNode(node: ProgramNode): any;
   visitVariableDeclarationNode(node: VariableDeclarationNode): any;
@@ -200,51 +230,10 @@ export interface ASTVisitor {
   visitIdentifierNode(node: IdentifierNode): any;
   visitObjectLiteralNode(node: ObjectLiteralNode): any;
   visitObjectAccessNode(node: ObjectAccessNode): any;
+  visitIndexAccessNode(node: IndexAccessNode): any;
+  visitIndexAssignmentNode(node: IndexAssignmentNode): any;
   visitOutputNode(node: OutputNode): any;
   visitUnaryExpressionNode(node: UnaryExpressionNode): any;
   visitReturnNode(node: ReturnNode): any;
+  visitTypeConstructionNode(node: TypeConstructionNode): any;
 }
-
-function abs(x: number): number {
-  if (x >= 0) {
-    return x;
-  } else {
-    return -x;
-  }
-}
-function sqrt(num: number): number {
-  if (num < 0) {
-    return NaN;
-  }
-  let approx: number;
-  approx = num;
-  let betterApprox: number;
-  betterApprox = approx + num / approx / 2;
-  while (abs(approx - betterApprox) > 1e-8) {
-    approx = betterApprox;
-    betterApprox = approx + num / approx / 2;
-  }
-  return betterApprox;
-}
-function solveQuadratic(a: number, b: number, c: number): void {
-  let discriminant: number;
-  let x1: number;
-  let x2: number;
-  discriminant = b * b - 4 * a * c;
-  if (discriminant < 0) {
-    console.log('No real solutions');
-  }
-  if (discriminant == 0) {
-    x1 = (-b / 2) * a;
-    console.log('One solution: ');
-    console.log(x1);
-  }
-  if (discriminant > 0) {
-    x1 = -b + (sqrt(discriminant) / 2) * a;
-    x2 = -b - (sqrt(discriminant) / 2) * a;
-    console.log('Two solutions: ');
-    console.log(x1);
-    console.log(x2);
-  }
-}
-//solveQuadratic(1, 7, -8);

@@ -2,6 +2,7 @@
 
 <statement> ::= <variable_declaration>
               | <assignment>
+              | <index_assignment>
               | <branching>
               | <loop>
               | <function_declaration>
@@ -13,6 +14,8 @@
 <variable_declaration> ::= "+" <identifier> "~" <type> ("=" <expression>)? ";"
 
 <assignment> ::= "<-" <identifier> "=" <expression> ";"
+
+<index_assignment> ::= <index_access> "=" <expression> ";"
 
 <branching> ::= "?" "[" <expression> "]" "|" <block> "~" (":" "|" <block> "~")?
 
@@ -28,14 +31,17 @@
 
 <semicolon_statement> ::= <expression> ";"
 
-<block> ::= <statement>*
+<block> ::= <statement>* 
 
 <expression> ::= <literal>
                | <identifier>
                | <binary_expression>
                | <unary_expression>
                | <object_literal>
-               | <object_access>
+               | <property_access>
+               | <index_access>
+               | <method_call>
+               | <type_construction>
                | <function_call>
 
 <binary_expression> ::= <expression> <binary_operator> <expression>
@@ -46,7 +52,16 @@
 
 <object_property> ::= <identifier> ":" <expression>
 
-<object_access> ::= <identifier> "->" <identifier>
+<property_access> ::= <identifier> "->" <identifier>  // Only readable properties
+
+<index_access> ::= <identifier> "->" "(" <expression> ")"
+
+<method_call> ::= <identifier> "->" <string_method> "(" <arguments> ")"
+
+<type_construction> ::= "string" "(" <expression> ")"
+                      | "array" "<" <type> ">" "(" <arguments> ")"
+
+<string_method> ::= "substring" | "replace" | "toUpper" | "toLower"
 
 <parameters> ::= "none"
                | "<" <parameter> ("," <parameter>)* ">"
@@ -61,14 +76,14 @@
 
 <identifier> ::= [a-zA-Z_][a-zA-Z0-9_]*
 
-<type> ::= "number" | "string" | "bool" | "object" | "void"
+<type> ::= "number" | "string" | "boolean" | "array<T>" | "object<T>" | "void"
 
-<binary_operator> ::= "+" | "-" | "*" | "/" | "==" | "!=" | "<" | ">" | "<=" | ">="
+<binary_operator> ::= "+" | "-" | "*" | "/" | "==" | "!=" | "<" | ">" | "<=" | ">=" | "."
 
 <unary_operator> ::= "-" | "!"
 
 <number_literal> ::= [0-9]+(\.[0-9]+)?
 
-<string_literal> ::= "\"" [^"]* "\""
+<string_literal> ::= "\"" [^\"]* "\""
 
 <boolean_literal> ::= "yes" | "no"

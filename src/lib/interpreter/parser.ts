@@ -6,6 +6,8 @@ import {
   FunctionCallNode,
   FunctionDeclarationNode,
   IdentifierNode,
+  IndexAccessNode,
+  IndexAssignmentNode,
   LiteralNode,
   LoopNode,
   ObjectAccessNode,
@@ -13,6 +15,7 @@ import {
   OutputNode,
   ProgramNode,
   ReturnNode,
+  TypeConstructionNode,
   UnaryExpressionNode,
   VariableDeclarationNode,
 } from './ast';
@@ -68,6 +71,10 @@ export class Parser {
     // Парсинг присвоєння
     else if (this.match(TokenType.Assignment)) {
       statement = this.parseAssignment();
+    }
+    // Парсинг індексованого присвоєння
+    else if (this.match(TokenType.Identifier) && this.checkNext(TokenType.AccessOperator)) {
+      statement = this.parseIndexAssignment();
     }
     // Парсинг виводу
     else if (this.match(TokenType.Output)) {
@@ -177,8 +184,7 @@ export class Parser {
     return new AssignmentNode(name, value);
   }
 
-  // Парсинг ідентифікатора або доступу до властивості об'єкта
-  private parseIdentifierOrObjectAccess(): ASTNode {
+  private parseIdentifier(): ASTNode {
     const identifier = new IdentifierNode(
       this.consume(
         TokenType.Identifier,
@@ -186,6 +192,13 @@ export class Parser {
         'Expect variable or object name'
       ).value
     );
+
+    return identifier; // Якщо це просто ідентифікатор
+  }
+
+  // Парсинг ідентифікатора або доступу до властивості об'єкта
+  private parseIdentifierOrObjectAccess(): ASTNode {
+    const identifier = this.parseIdentifier();
 
     if (this.match(TokenType.AccessOperator)) {
       // Перевірка на оператор '->'
@@ -459,7 +472,14 @@ export class Parser {
     if (this.match(TokenType.String))
       return new LiteralNode(this.advance().value.slice(1, -1));
 
+    if (this.match(TokenType.Type)) {
+      return this.parseTypeConstruction();
+    }
+
     // Якщо зустрічаємо ідентифікатор, перевіряємо, чи є доступ до об'єкта (Object Path)
+    if (this.match(TokenType.Identifier) && this.checkNext(TokenType.AccessOperator)) {
+      return this.parseIndexAccess();
+    }
     if (this.match(TokenType.Identifier)) {
       let node: ASTNode = new IdentifierNode(this.advance().value);
 
@@ -517,6 +537,42 @@ export class Parser {
     this.throwErrorWithContext('Unexpected token in expression');
   }
 
+  private parseTypeConstruction(): TypeConstructionNode {
+    const type = this.consume(
+      TokenType.Type,
+      'string',
+      'Expect type "string"'
+    ).value;
+
+    this.consume(TokenType.Punctuation, '(', "Expect '(' to open type construction");
+    const value = this.parseExpression();
+    this.consume(TokenType.Punctuation, ')', "Expect ')' to close type construction");
+
+    return new TypeConstructionNode(type, value);
+  }
+
+  // Парсинг індексованого доступу
+  private parseIndexAccess(): IndexAccessNode {
+    const objectId = this.parseIdentifier();
+    this.consume(TokenType.AccessOperator, '->', "Expect '->' for index access");
+    this.consume(TokenType.Punctuation, '(', "Expect '(' for index access");
+    const index = this.parseExpression();
+    this.consume(TokenType.Punctuation, ')', "Expect ')' after index");
+    return new IndexAccessNode(objectId, index);
+  }
+
+  // Парсинг індексованого присвоєння
+  private parseIndexAssignment(): IndexAssignmentNode {
+    const objectId = this.parseIdentifier();
+    this.consume(TokenType.AccessOperator, '->', "Expect '->' for index access");
+    this.consume(TokenType.Punctuation, '(', "Expect '(' for index access");
+    const index = this.parseExpression();
+    this.consume(TokenType.Punctuation, ')', "Expect ')' after index");
+    this.consume(TokenType.Equals, '=', "Expect '=' for index assignment");
+    const value = this.parseExpression();
+    return new IndexAssignmentNode(objectId, index, value);
+  }
+  
   private parseObjectLiteral(): ObjectLiteralNode {
     const properties: { [key: string]: ASTNode } = {};
 

@@ -7,6 +7,8 @@ import {
   FunctionCallNode,
   FunctionDeclarationNode,
   IdentifierNode,
+  IndexAccessNode,
+  IndexAssignmentNode,
   LiteralNode,
   LoopNode,
   ObjectAccessNode,
@@ -14,6 +16,7 @@ import {
   OutputNode,
   ProgramNode,
   ReturnNode,
+  TypeConstructionNode,
   UnaryExpressionNode,
   VariableDeclarationNode,
 } from './ast';
@@ -42,7 +45,7 @@ export class JSONVisitor implements ASTVisitor {
       operator: node.operator,
       right: node.right.accept(this),
     };
-  }  
+  }
 
   visitFunctionDeclarationNode(node: FunctionDeclarationNode): any {
     return {
@@ -126,9 +129,9 @@ export class JSONVisitor implements ASTVisitor {
 
   visitUnaryExpressionNode(node: UnaryExpressionNode): any {
     return {
-        type: "UnaryExpression",
-        operator: node.operator,
-        operand: node.operand.accept(this) // Обробляємо операнд
+      type: "UnaryExpression",
+      operator: node.operator,
+      operand: node.operand.accept(this) // Обробляємо операнд
     };
   }
 
@@ -137,7 +140,32 @@ export class JSONVisitor implements ASTVisitor {
       type: 'Return',
       returnValue: node.returnValue.accept(this)
     };
-  }  
+  }
+
+  visitIndexAccessNode(node: IndexAccessNode): any {
+    return {
+      type: 'IndexAccess',
+      object: node.object.accept(this),
+      index: node.index.accept(this),
+    };
+  }
+
+  visitIndexAssignmentNode(node: IndexAssignmentNode): any {
+    return {
+      type: 'IndexAssignment',
+      object: node.object.accept(this),
+      index: node.index.accept(this),
+      value: node.value.accept(this),
+    };
+  }
+
+  visitTypeConstructionNode(node: TypeConstructionNode): any {
+    return {
+      type: 'TypeConstruction',
+      typeName: node.type,
+      value: node.value.accept(this),
+    };
+  }
 }
 
 export class OMLToTypeScriptVisitor implements ASTVisitor {
@@ -255,6 +283,36 @@ export class OMLToTypeScriptVisitor implements ASTVisitor {
   visitReturnNode(node: ReturnNode): string {
     return `return ${node.returnValue.accept(this)};`;
   }
+
+  visitIndexAccessNode(node: IndexAccessNode): string {
+    const object = node.object.accept(this);
+    const index = node.index.accept(this);
+    return `${object}[${index}]`;
+  }
+
+  visitIndexAssignmentNode(node: IndexAssignmentNode): string {
+    const object = node.object.accept(this);
+    const index = node.index.accept(this);
+    const value = node.value.accept(this);
+
+    if (typeof object === 'string') {
+      if (node.value instanceof LiteralNode && typeof node.value.value === 'string') {
+        if (node.value.value.length !== 1) {
+          throw new Error(`Value for string assignment must be a single character.`);
+        }
+      } else if (typeof value !== 'string' || value.length !== 1) {
+        throw new Error(`Value for string assignment must be a single character.`);
+      }
+    }
+
+    return `${object}[${index}] = ${value};`;
+  }
+
+  visitTypeConstructionNode(node: TypeConstructionNode): string {
+    //const type = node.type;
+    const value = node.value.accept(this);
+    return `String(${value})`;
+  }
 }
 
 export class ASTTreeVisitor implements ASTVisitor {
@@ -365,7 +423,26 @@ export class ASTTreeVisitor implements ASTVisitor {
   visitReturnNode(node: ReturnNode): string {
     const returnValue = node.returnValue.accept(this); // Отримуємо значення для повернення
     return `${this.indent()}@ <- ${returnValue}`; // Формуємо рядок для повернення
-  }  
+  }
+
+  visitIndexAccessNode(node: IndexAccessNode): string {
+    const object = this.visitNode(node.object);
+    const index = this.visitNode(node.index);
+    return `${this.indent()}${object}->(${index})`;
+  }
+
+  visitIndexAssignmentNode(node: IndexAssignmentNode): string {
+    const object = this.visitNode(node.object);
+    const index = this.visitNode(node.index);
+    const value = this.visitNode(node.value);
+    return `${this.indent()}${object}->(${index}) = ${value}`;
+  }
+
+  visitTypeConstructionNode(node: TypeConstructionNode): string {
+    const type = node.type;
+    const value = this.visitNode(node.value);
+    return `${this.indent()}${type}(${value})`;
+  }
 
   // New helper methods to visit nodes directly
   private visitNode(node: ASTNode): string {
@@ -571,7 +648,62 @@ export class OMLInterpreter implements ASTVisitor {
   visitReturnNode(node: ReturnNode): any {
     const returnValue = node.returnValue.accept(this);
     throw returnValue; // Використовуємо виключення для зупинки виконання функції
-  }   
+  }
+
+  visitIndexAccessNode(node: IndexAccessNode): any {
+    const object = node.object.accept(this);
+    const index = node.index.accept(this);
+
+    if (typeof object === 'string') {
+      if (typeof index !== 'number' || index < 0 || index >= object.length) {
+        throw new Error(`Index out of bounds`);
+      }
+      return object[index];
+    }
+
+    throw new Error(`Unsupported index access on type '${typeof object}'`);
+  }
+
+  visitIndexAssignmentNode(node: IndexAssignmentNode): any {
+    const object = node.object.accept(this);
+    const index = node.index.accept(this);
+    const value = node.value.accept(this);
+
+    if (typeof object === 'string') {
+      if (typeof index !== 'number' || index < 0 || index >= object.length) {
+        throw new Error(`Index out of bounds`);
+      }
+      if (typeof value !== 'string' || value.length !== 1) {
+        throw new Error(`Value for string assignment must be a single character`);
+      }
+      const characters = object.split('');
+      characters[index] = value;
+      this.variables.set((node.object as IdentifierNode).name, characters.join(''));
+      return;
+    }
+
+    throw new Error(`Unsupported index assignment on type '${typeof object}'`);
+  }
+
+  visitTypeConstructionNode(node: TypeConstructionNode): any {
+    const type = node.type;
+    const value = node.value.accept(this);
+
+    if (type === 'string') {
+      if (typeof value === 'number') {
+        if (value < 1) {
+          throw new Error(`String length must be greater than 0`);
+        }
+        return ' '.repeat(value); // Створюємо новий рядок з пробілами заданої довжини
+      }
+      if (typeof value === 'string') {
+        return `${value}`; // Створюємо новий рядок за заданим літералом
+      }
+      
+    }
+
+    throw new Error(`Unsupported type construction: ${type}`);
+  }
 
   getOutput(): string {
     return this.output.join('\n'); // Повертаємо результат виведення

@@ -5,7 +5,15 @@ import { JSONVisitor, OMLInterpreter, OMLToTypeScriptVisitor } from './visitors'
 import { SemanticAnalyzer } from './semantic';
 
 // Шматок коду на OML, який ми будемо парсити
-const omlCode = `
+const omlCode =  `
++str~string;
+<-str = "Hello";
+str->(1) = "a";
+^^str;
+`;
+
+
+`
   +a~number;
 
   @abs::<x~number> -> number |

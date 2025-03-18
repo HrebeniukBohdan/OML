@@ -7,6 +7,8 @@ import {
   FunctionCallNode,
   FunctionDeclarationNode,
   IdentifierNode,
+  IndexAccessNode,
+  IndexAssignmentNode,
   LiteralNode,
   LoopNode,
   ObjectAccessNode,
@@ -14,6 +16,7 @@ import {
   OutputNode,
   ProgramNode,
   ReturnNode,
+  TypeConstructionNode,
   UnaryExpressionNode,
   VariableDeclarationNode,
 } from './ast';
@@ -159,30 +162,6 @@ export class SemanticAnalyzer implements ASTVisitor {
       return false;
   }
 
-  /*
-  visitFunctionDeclarationNode(node: FunctionDeclarationNode): void {
-    if (this.functions.has(node.name)) {
-      throw new Error(`Function '${node.name}' is already declared.`);
-    }
-    this.functions.set(node.name, node);
-    this.currentFunctionReturnType = node.returnType;
-  
-    // Входимо в новий скоуп для параметрів функції та тіла
-    this.enterScope();
-    node.parameters.forEach((param) => {
-      this.declareVariable(param.name, param.type); // Використовуємо declareVariable для параметрів
-    });
-  
-    // Перевіряємо тіло функції
-    for (const statement of node.body) {
-      statement.accept(this);
-    }
-  
-    // Виходимо з локального скоупу функції
-    this.exitScope();
-    this.currentFunctionReturnType = null;
-  }*/  
-
   visitFunctionCallNode(node: FunctionCallNode): string {
     const func = this.functions.get(node.name);
     if (!func) {
@@ -262,6 +241,20 @@ export class SemanticAnalyzer implements ASTVisitor {
       return 'string';
     }
     return typeof node.value;
+  }
+
+  visitTypeConstructionNode(node: TypeConstructionNode): string {
+    const type = node.type;
+    const valueType = node.value.accept(this);
+
+    if (type === 'string') {
+      if (valueType !== 'number' && valueType !== 'string') {
+        throw new Error(`String constructor expects a number or string argument, but got ${valueType}.`);
+      }
+      return 'string';
+    }
+
+    throw new Error(`Unsupported type construction: ${type}`);
   }
 
   visitIdentifierNode(node: IdentifierNode): string {
@@ -346,7 +339,45 @@ export class SemanticAnalyzer implements ASTVisitor {
   }
 
   visitOutputNode(node: OutputNode): void {
-    node.value.accept(this); // Перевірка типу значення, яке виводимо
+    node.value.accept(this);
+  }
+
+  // add object type
+  visitIndexAccessNode(node: IndexAccessNode): void {
+    const objectType = node.object.accept(this);
+    const indexType = node.index.accept(this);
+
+    if (objectType === 'string') {
+      if (indexType !== 'number') {
+        throw new Error(`Index for string must be of type 'number', but got '${indexType}'.`);
+      }
+      return;
+    }
+
+    throw new Error(`Unsupported index access on type '${objectType}'.`);
+  }
+
+  visitIndexAssignmentNode(node: IndexAssignmentNode): void {
+    const objectType = node.object.accept(this);
+    const indexType = node.index.accept(this);
+    const valueType = node.value.accept(this);
+
+    if (objectType === 'string') {
+      if (indexType !== 'number') {
+        throw new Error(`Index for string must be of type 'number', but got '${indexType}'.`);
+      }
+      if (valueType !== 'string') {
+        throw new Error(`Value for string assignment must be a string type, but got '${valueType}'.`);
+      }
+      if (node.value instanceof LiteralNode && typeof node.value.value === 'string') {
+        if (node.value.value.length !== 1) {
+          throw new Error(`Value for string assignment must be a single character, but got '${node.value.value}'.`);
+        }
+      }
+      return;
+    }
+
+    throw new Error(`Unsupported index assignment on type '${objectType}'.`);
   }
 }
 
