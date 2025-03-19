@@ -25,7 +25,8 @@ export enum TokenType {
   AtSymbol = "at_symbol", // Symbol @
   None = "none",  // Token for "none" value
   Bool = "bool",  // Boolean values
-  Dot = "dot"
+  Dot = "dot",
+  StructType = "struct_type",
 }
 
 // Type for regex object and token type
@@ -67,6 +68,7 @@ export class Tokenizer {
       { type: TokenType.Type, regex: /^(void|number|bool|string|object)/ },  // Variable types
       { type: TokenType.None, regex: /^none/ },  // Token for "none" value
       { type: TokenType.Bool, regex: /^(yes|no)/ },  // Boolean variable values
+      { type: TokenType.StructType, regex: /^\$[a-zA-Z_][a-zA-Z0-9_]*/ }, // Struct type identifier
       { type: TokenType.Identifier, regex: /^[a-zA-Z_][a-zA-Z0-9_]*/ }, // For identifiers
       { type: TokenType.Number, regex: /^[0-9]+(\.[0-9]+)?/ }, // Support for integers and floating-point numbers
       { type: TokenType.String, regex: /^"[^"]*"/ }, // String literals

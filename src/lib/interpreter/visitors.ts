@@ -16,6 +16,7 @@ import {
   OutputNode,
   ProgramNode,
   ReturnNode,
+  StructTypeNode,
   TypeConstructionNode,
   UnaryExpressionNode,
   VariableDeclarationNode,
@@ -164,6 +165,14 @@ export class JSONVisitor implements ASTVisitor {
       type: 'TypeConstruction',
       typeName: node.type,
       value: node.value.accept(this),
+    };
+  }
+
+  visitStructTypeNode(node: StructTypeNode): any {
+    return {
+      type: 'StructType',
+      name: node.name,
+      fields: node.fields,
     };
   }
 }
@@ -360,6 +369,13 @@ export class OMLToTypeScriptVisitor implements ASTVisitor {
     const value = node.value.accept(this);
     return `String(${value})`;
   }
+
+  visitStructTypeNode(node: StructTypeNode): string {
+    const fields = Object.entries(node.fields)
+      .map(([key, type]) => `${key}: ${type}`)
+      .join('; ');
+    return `type ${node.name} = { ${fields} };`;
+  }
 }
 
 export class ASTTreeVisitor implements ASTVisitor {
@@ -526,12 +542,20 @@ export class ASTTreeVisitor implements ASTVisitor {
 
     return result;
   }
+
+  visitStructTypeNode(node: StructTypeNode): string {
+    const fields = Object.entries(node.fields)
+      .map(([key, type]) => `${this.indent()}${key}: ${type};`)
+      .join('\n');
+    return `${this.indent()}type ${node.name} = {\n${fields}\n${this.indent()}};`;
+  }
 }
 
 export class OMLInterpreter implements ASTVisitor {
   private variables: Map<string, any> = new Map();
   private functions: Map<string, FunctionDeclarationNode> = new Map();
   private output: string[] = [];
+  private structTypes: Map<string, { [key: string]: string }> = new Map();
 
   visitProgramNode(node: ProgramNode): any {
     for (const stmt of node.statements) {
@@ -757,6 +781,13 @@ export class OMLInterpreter implements ASTVisitor {
     }
 
     throw new Error(`Unsupported type construction: ${type}`);
+  }
+
+  visitStructTypeNode(node: StructTypeNode): void {
+    if (this.structTypes.has(node.name)) {
+      throw new Error(`Struct type '${node.name}' is already declared.`);
+    }
+    this.structTypes.set(node.name, node.fields);
   }
 
   getOutput(): string {

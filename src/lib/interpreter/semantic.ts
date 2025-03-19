@@ -16,6 +16,7 @@ import {
   OutputNode,
   ProgramNode,
   ReturnNode,
+  StructTypeNode,
   TypeConstructionNode,
   UnaryExpressionNode,
   VariableDeclarationNode,
@@ -55,6 +56,7 @@ export class SemanticAnalyzer implements ASTVisitor {
   private currentScope: SymbolTable = new SymbolTable();
   private functions: Map<string, FunctionDeclarationNode> = new Map();
   private currentFunctionReturnType: string | null = null;
+  private structTypes: Map<string, { [key: string]: string }> = new Map();
 
   private enterScope(): void {
     this.currentScope = new SymbolTable(this.currentScope);
@@ -393,5 +395,12 @@ export class SemanticAnalyzer implements ASTVisitor {
     }
 
     throw new Error(`Unsupported index assignment on type '${objectType}'.`);
+  }
+
+  visitStructTypeNode(node: StructTypeNode): void {
+    if (this.structTypes.has(node.name)) {
+      throw new Error(`Struct type '${node.name}' is already declared.`);
+    }
+    this.structTypes.set(node.name, node.fields);
   }
 }

@@ -224,6 +224,16 @@ export class TypeConstructionNode extends ASTNode {
   }
 }
 
+export class StructTypeNode extends ASTNode {
+  constructor(public name: string, public fields: { [key: string]: string }) {
+    super();
+  }
+
+  accept(visitor: ASTVisitor): any {
+    return visitor.visitStructTypeNode(this);
+  }
+}
+
 export interface ASTVisitor {
   visitProgramNode(node: ProgramNode): any;
   visitVariableDeclarationNode(node: VariableDeclarationNode): any;
@@ -243,4 +253,5 @@ export interface ASTVisitor {
   visitUnaryExpressionNode(node: UnaryExpressionNode): any;
   visitReturnNode(node: ReturnNode): any;
   visitTypeConstructionNode(node: TypeConstructionNode): any;
+  visitStructTypeNode(node: StructTypeNode): any;
 }

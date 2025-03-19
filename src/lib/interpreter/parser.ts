@@ -15,6 +15,7 @@ import {
   OutputNode,
   ProgramNode,
   ReturnNode,
+  StructTypeNode,
   TypeConstructionNode,
   UnaryExpressionNode,
   VariableDeclarationNode,
@@ -46,6 +47,7 @@ export class Parser {
   }
 
   private parseStatement(): ASTNode {
+    if (this.match(TokenType.StructType)) return this.parseStructType();
     const semicolonStatement: ASTNode = this.parseSemicolonStatement();
     if (semicolonStatement) return semicolonStatement;
     if (this.match(TokenType.AtSymbol)) return this.parseFunctionDeclaration();
@@ -598,6 +600,27 @@ export class Parser {
     this.consume(TokenType.Output, '^^', "Expect '^^' for output");
     const value = this.parseExpression();
     return new OutputNode(value);
+  }
+
+  private parseStructType(): StructTypeNode {
+    const key = this.consume(TokenType.StructType, null, "Expect struct type name declaration");
+    const name = key.value.replace('$', ''); // Remove '$' from the name
+    const fields: { [key: string]: string } = {};
+
+    this.consume(TokenType.FunctionDeclaration, null, "Expect sign '::' after struct type name");
+    this.consume(TokenType.Punctuation, '{', "Expect '{' to start struct type");
+
+    do {
+      const fieldName = this.consume(TokenType.Identifier, null, "Expect field name").value;
+      this.consume(TokenType.Colon, ':', "Expect ':' after field name");
+      const fieldType = this.consume(TokenType.Type, null, "Expect field type").value;
+      fields[fieldName] = fieldType;
+      this.consume(TokenType.Punctuation, ';', "Expect ';' after field declaration");
+    } while (this.match(TokenType.Identifier));
+
+    this.consume(TokenType.Punctuation, '}', "Expect '}' to end struct type");
+
+    return new StructTypeNode(name, fields);
   }
 
   private consume(
