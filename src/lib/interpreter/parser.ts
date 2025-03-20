@@ -10,10 +10,10 @@ import {
   IndexAssignmentNode,
   LiteralNode,
   LoopNode,
-  ObjectAccessNode,
   ObjectLiteralNode,
   OutputNode,
   ProgramNode,
+  PropertyAccessNode,
   ReturnNode,
   StructTypeNode,
   TypeConstructionNode,
@@ -166,10 +166,14 @@ export class Parser {
   private parseAssignment(): ASTNode {
     this.consume(TokenType.Assignment, null, "Expect '<-' for assignment");
 
-    const name: ASTNode = this.parseIdentifierOrObjectAccess();
+    const name: ASTNode = this.parseIdentifierOrPropertyAccess();
 
     this.consume(TokenType.Equals, null, "Expect '=' after variable name");
     const value = this.parseExpression();
+
+    if (name instanceof PropertyAccessNode) {
+      name.isAssignment = true;
+    }
 
     return new AssignmentNode(name, value);
   }
@@ -186,21 +190,13 @@ export class Parser {
     return identifier;
   }
 
-  private parseIdentifierOrObjectAccess(): ASTNode {
-    const identifier = this.parseIdentifier();
+  private parseIdentifierOrPropertyAccess(): ASTNode {
+    let identifier = this.parseIdentifier();
 
-    if (this.match(TokenType.AccessOperator)) {
-      this.consume(
-        TokenType.AccessOperator,
-        '->',
-        "Expect '->' for object property access"
-      );
-      const property = this.consume(
-        TokenType.Identifier,
-        null,
-        'Expect object property name'
-      ).value;
-      return new ObjectAccessNode(identifier, property);
+    while (this.match(TokenType.AccessOperator)) {
+      this.consume(TokenType.AccessOperator, '->', "Expect '->' for property access");
+      const property = this.consume(TokenType.Identifier, null, 'Expect property name').value;
+      identifier = new PropertyAccessNode(identifier, property);
     }
 
     return identifier;
@@ -467,7 +463,7 @@ export class Parser {
           null,
           "Expect property name after '->'"
         );
-        node = new ObjectAccessNode(node, property.value);
+        node = new PropertyAccessNode(node, property.value);
       }
 
       return node;

@@ -11,10 +11,10 @@ import {
   IndexAssignmentNode,
   LiteralNode,
   LoopNode,
-  ObjectAccessNode,
   ObjectLiteralNode,
   OutputNode,
   ProgramNode,
+  PropertyAccessNode,
   ReturnNode,
   StructTypeNode,
   TypeConstructionNode,
@@ -113,14 +113,6 @@ export class JSONVisitor implements ASTVisitor {
     };
   }
 
-  visitObjectAccessNode(node: ObjectAccessNode): any {
-    return {
-      type: 'ObjectAccess',
-      object: node.object.accept(this),
-      property: node.property,
-    };
-  }
-
   visitOutputNode(node: OutputNode): any {
     return {
       type: 'Output',
@@ -173,6 +165,15 @@ export class JSONVisitor implements ASTVisitor {
       type: 'StructType',
       name: node.name,
       fields: node.fields,
+    };
+  }
+
+  visitPropertyAccessNode(node: PropertyAccessNode): any {
+    return {
+      type: 'PropertyAccess',
+      object: node.object.accept(this),
+      property: node.property,
+      isAssignment: node.isAssignment,
     };
   }
 }
@@ -280,10 +281,6 @@ export class OMLToTypeScriptVisitor implements ASTVisitor {
     return `{ ${properties} }`;
   }
 
-  visitObjectAccessNode(node: ObjectAccessNode): string {
-    return `${node.object.accept(this)}.${node.property}`;
-  }
-
   visitFunctionDeclarationNode(node: FunctionDeclarationNode): string {
     const paramTypes = node.parameters
       .map((param) => `${param.name}: ${param.type}`)
@@ -375,6 +372,12 @@ export class OMLToTypeScriptVisitor implements ASTVisitor {
       .map(([key, type]) => `${key}: ${type}`)
       .join('; ');
     return `type ${node.name} = { ${fields} };`;
+  }
+
+  visitPropertyAccessNode(node: PropertyAccessNode): string {
+    const object = node.object.accept(this);
+    const property = node.property;
+    return `${object}.${property}`;
   }
 }
 
@@ -473,10 +476,6 @@ export class ASTTreeVisitor implements ASTVisitor {
     return result;
   }
 
-  visitObjectAccessNode(node: ObjectAccessNode): string {
-    return `${this.indent()}${this.visitNode(node.object)}->${node.property}`;
-  }
-
   visitOutputNode(node: OutputNode): string {
     return `${this.indent()}^^ ${this.visitNode(node.value)}`;
   }
@@ -549,6 +548,12 @@ export class ASTTreeVisitor implements ASTVisitor {
       .join('\n');
     return `${this.indent()}type ${node.name} = {\n${fields}\n${this.indent()}};`;
   }
+
+  visitPropertyAccessNode(node: PropertyAccessNode): string {
+    const object = this.visitNode(node.object);
+    const property = node.property;
+    return `${this.indent()}${object}->${property}`;
+  }
 }
 
 export class OMLInterpreter implements ASTVisitor {
@@ -570,10 +575,19 @@ export class OMLInterpreter implements ASTVisitor {
 
   visitAssignmentNode(node: AssignmentNode): any {
     const value = node.value.accept(this);
-    if (node.nameOrObjectPath instanceof ObjectAccessNode) {
-      this.visitObjectAccessAssignment(node.nameOrObjectPath, value);
+    if (node.nameOrObjectPath instanceof PropertyAccessNode) {
+      this.visitPropertyAccessAssignment(node.nameOrObjectPath, value);
     } else {
-      this.variables.set((node.nameOrObjectPath as IdentifierNode).name, value); // Save the value
+      this.variables.set((node.nameOrObjectPath as IdentifierNode).name, value);
+    }
+  }
+
+  visitPropertyAccessAssignment(node: PropertyAccessNode, value: any): any {
+    const object = node.object.accept(this);
+    if (typeof object === 'object' && object !== null) {
+      object[node.property] = value;
+    } else {
+      throw new Error(`Cannot assign property '${node.property}' on non-object type.`);
     }
   }
 
@@ -692,16 +706,6 @@ export class OMLInterpreter implements ASTVisitor {
     return obj;
   }
 
-  visitObjectAccessNode(node: ObjectAccessNode): any {
-    const object = node.object.accept(this);
-    return object[node.property];
-  }
-
-  visitObjectAccessAssignment(node: ObjectAccessNode, value: any): any {
-    const object = node.object.accept(this);
-    object[node.property] = value;
-  }
-
   visitOutputNode(node: OutputNode): any {
     const value = node.value.accept(this);
     this.output.push(value);
@@ -788,6 +792,36 @@ export class OMLInterpreter implements ASTVisitor {
       throw new Error(`Struct type '${node.name}' is already declared.`);
     }
     this.structTypes.set(node.name, node.fields);
+  }
+
+  visitPropertyAccessNode(node: PropertyAccessNode): any {
+    const object = node.object.accept(this);
+
+    if (typeof object === 'string' && node.property === 'length') {
+      if (node.isAssignment) {
+        throw new Error(`Cannot assign to read-only property 'length' of type 'string'.`);
+      }
+      return object.length;
+    }
+
+    if (Array.isArray(object) && node.property === 'length') {
+      if (node.isAssignment) {
+        throw new Error(`Cannot assign to read-only property 'length' of type 'array'.`);
+      }
+      return object.length;
+    }
+
+    if (typeof object === 'object' && object !== null) {
+      if (!(node.property in object)) {
+        throw new Error(`Property '${node.property}' does not exist on object.`);
+      }
+      if (node.isAssignment) {
+        //object[node.property] = value;
+      }
+      return object[node.property];
+    }
+
+    throw new Error(`Unsupported property access on type '${typeof object}'.`);
   }
 
   getOutput(): string {

@@ -52,7 +52,7 @@
 
 <object_property> ::= <identifier> ":" <expression>
 
-<property_access> ::= <identifier> "->" <identifier>  // Only readable properties
+<property_access> ::= <identifier> "->" <identifier>
 
 <index_access> ::= <identifier> "->" "(" <expression> ")"
 

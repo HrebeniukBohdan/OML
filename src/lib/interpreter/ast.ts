@@ -88,21 +88,6 @@ export class IdentifierNode extends ASTNode {
   }
 }
 
-export class ObjectAccessNode extends ASTNode {
-  public object: ASTNode;
-  public property: string;
-
-  constructor(object: ASTNode, property: string) {
-    super();
-    this.object = object;
-    this.property = property;
-  }
-
-  accept(visitor: ASTVisitor): any {
-    return visitor.visitObjectAccessNode(this);
-  }
-}
-
 export class IndexAccessNode extends ASTNode {
   constructor(public object: ASTNode, public index: ASTNode) {
     super();
@@ -234,6 +219,16 @@ export class StructTypeNode extends ASTNode {
   }
 }
 
+export class PropertyAccessNode extends ASTNode {
+  constructor(public object: ASTNode, public property: string, public isAssignment: boolean = false) {
+    super();
+  }
+
+  accept(visitor: ASTVisitor): any {
+    return visitor.visitPropertyAccessNode(this);
+  }
+}
+
 export interface ASTVisitor {
   visitProgramNode(node: ProgramNode): any;
   visitVariableDeclarationNode(node: VariableDeclarationNode): any;
@@ -246,7 +241,6 @@ export interface ASTVisitor {
   visitLiteralNode(node: LiteralNode): any;
   visitIdentifierNode(node: IdentifierNode): any;
   visitObjectLiteralNode(node: ObjectLiteralNode): any;
-  visitObjectAccessNode(node: ObjectAccessNode): any;
   visitIndexAccessNode(node: IndexAccessNode): any;
   visitIndexAssignmentNode(node: IndexAssignmentNode): any;
   visitOutputNode(node: OutputNode): any;
@@ -254,4 +248,5 @@ export interface ASTVisitor {
   visitReturnNode(node: ReturnNode): any;
   visitTypeConstructionNode(node: TypeConstructionNode): any;
   visitStructTypeNode(node: StructTypeNode): any;
+  visitPropertyAccessNode(node: PropertyAccessNode): any;
 }

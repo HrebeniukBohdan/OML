@@ -11,10 +11,10 @@ import {
   IndexAssignmentNode,
   LiteralNode,
   LoopNode,
-  ObjectAccessNode,
   ObjectLiteralNode,
   OutputNode,
   ProgramNode,
+  PropertyAccessNode,
   ReturnNode,
   StructTypeNode,
   TypeConstructionNode,
@@ -302,16 +302,6 @@ export class SemanticAnalyzer implements ASTVisitor {
     return 'object';
   }
 
-  visitObjectAccessNode(node: ObjectAccessNode): string {
-    const objectType = node.object.accept(this);
-    if (objectType !== 'object') {
-      throw new Error(
-        `Type mismatch: expected 'object' for property access, but got '${objectType}'.`
-      );
-    }
-    return 'any';
-  }
-
   visitBranchingNode(node: BranchingNode): void {
     const conditionType = node.condition.accept(this);
     if (conditionType !== 'bool') {
@@ -402,5 +392,33 @@ export class SemanticAnalyzer implements ASTVisitor {
       throw new Error(`Struct type '${node.name}' is already declared.`);
     }
     this.structTypes.set(node.name, node.fields);
+  }
+
+  visitPropertyAccessNode(node: PropertyAccessNode): string {
+    const objectType = node.object.accept(this);
+
+    if (objectType === 'string' && node.property === 'length') {
+      if (node.isAssignment) {
+        throw new Error(`Cannot assign to read-only property 'length' of type 'string'.`);
+      }
+      return 'number';
+    }
+
+    if (objectType.startsWith('array<') && node.property === 'length') {
+      if (node.isAssignment) {
+        throw new Error(`Cannot assign to read-only property 'length' of type 'array'.`);
+      }
+      return 'number';
+    }
+
+    if (objectType.startsWith('object<')) {
+      const propertyType = this.structTypes.get(objectType.slice(7, -1))?.[node.property];
+      if (!propertyType) {
+        throw new Error(`Property '${node.property}' does not exist on type '${objectType}'.`);
+      }
+      return propertyType;
+    }
+
+    throw new Error(`Unsupported property access on type '${objectType}'.`);
   }
 }
