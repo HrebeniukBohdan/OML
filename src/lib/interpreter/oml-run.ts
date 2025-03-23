@@ -4,6 +4,28 @@ import { JSONVisitor, OMLInterpreter, OMLToTypeScriptVisitor } from './visitors'
 import { SemanticAnalyzer } from './semantic';
 
 const omlCode = `
+  $myAddress::{ 
+    street: string;
+    houseNumber: number;
+    apptNumber: number;
+  }
+
+  $myObj::{ 
+    name: string;
+    age: number;
+    address: object<myAddress>;
+  }
+
+  +obj~object<myObj> = (
+    name: "Test User",
+    age: 25,
+    address: ( street: "New-York Avenue", houseNumber: 29, apptNumber: 89 )
+  );
+
+  ^^ obj -> name;
+`;
+
+`
   +a~number;
 
   @abs::<x~number> -> number |

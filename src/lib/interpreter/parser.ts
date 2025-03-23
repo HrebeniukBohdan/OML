@@ -149,11 +149,8 @@ export class Parser {
       '~',
       "Expect '~' before variable type declaration"
     );
-    const type = this.consume(
-      TokenType.Type,
-      null,
-      'Expect type declaration'
-    ).value;
+
+    const type = this.parseType();
 
     let value: ASTNode | null = null;
     if (this.match(TokenType.Equals)) {
@@ -450,7 +447,8 @@ export class Parser {
 
     if (
       this.match(TokenType.Identifier) &&
-      this.checkNext(TokenType.AccessOperator)
+      this.checkNext(TokenType.AccessOperator) &&
+      this.checkNext(TokenType.Punctuation, 2)
     ) {
       return this.parseIndexAccess();
     }
@@ -609,7 +607,7 @@ export class Parser {
     do {
       const fieldName = this.consume(TokenType.Identifier, null, "Expect field name").value;
       this.consume(TokenType.Colon, ':', "Expect ':' after field name");
-      const fieldType = this.consume(TokenType.Type, null, "Expect field type").value;
+      const fieldType = this.parseType();
       fields[fieldName] = fieldType;
       this.consume(TokenType.Punctuation, ';', "Expect ';' after field declaration");
     } while (this.match(TokenType.Identifier));
@@ -617,6 +615,27 @@ export class Parser {
     this.consume(TokenType.Punctuation, '}', "Expect '}' to end struct type");
 
     return new StructTypeNode(name, fields);
+  }
+
+  private parseType(): string {
+    if (this.match(TokenType.Type)) {
+      const type = this.advance().value;
+
+      if (type === 'array' || type === 'object') {
+        this.consume(TokenType.LogicOperator, '<', "Expect '<' for complex type");
+        const innerType = type === 'array' ? this.parseType() : this.consume(
+          TokenType.Identifier,
+          null,
+          'Expect struct type name without "$" symbol'
+        ).value;
+        this.consume(TokenType.LogicOperator, '>', "Expect '>' for complex type");
+        return `${type}<${innerType}>`;
+      }
+
+      return type;
+    }
+
+    this.throwErrorWithContext("Expect type declaration");
   }
 
   private consume(

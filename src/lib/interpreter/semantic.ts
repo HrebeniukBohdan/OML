@@ -412,7 +412,12 @@ export class SemanticAnalyzer implements ASTVisitor {
     }
 
     if (objectType.startsWith('object<')) {
-      const propertyType = this.structTypes.get(objectType.slice(7, -1))?.[node.property];
+      const structTypeName = objectType.slice(7, -1);
+      const structType = this.structTypes.get(structTypeName);
+      if (!structType) {
+        throw new Error(`Struct type '${structTypeName}' is not declared.`);
+      }
+      const propertyType = structType[node.property];
       if (!propertyType) {
         throw new Error(`Property '${node.property}' does not exist on type '${objectType}'.`);
       }

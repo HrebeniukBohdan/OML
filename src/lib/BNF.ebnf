@@ -76,7 +76,11 @@
 
 <identifier> ::= [a-zA-Z_][a-zA-Z0-9_]*
 
-<type> ::= "number" | "string" | "boolean" | "array<T>" | "object<T>" | "void"
+<type> ::= "number" | "string" | "boolean" | "array<" <type> ">" | "object<" <identifier> ">" | "void"
+
+<struct_type> ::= "$" <identifier> "::" "{" <struct_field> (<struct_field>)* "}"
+
+<struct_field> ::= <identifier> ":" <type> ";"
 
 <binary_operator> ::= "+" | "-" | "*" | "/" | "==" | "!=" | "<" | ">" | "<=" | ">=" | "."
 

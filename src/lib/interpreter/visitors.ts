@@ -815,9 +815,6 @@ export class OMLInterpreter implements ASTVisitor {
       if (!(node.property in object)) {
         throw new Error(`Property '${node.property}' does not exist on object.`);
       }
-      if (node.isAssignment) {
-        //object[node.property] = value;
-      }
       return object[node.property];
     }
 
