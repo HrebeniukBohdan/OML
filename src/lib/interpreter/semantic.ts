@@ -295,11 +295,22 @@ export class SemanticAnalyzer implements ASTVisitor {
   }
 
   visitObjectLiteralNode(node: ObjectLiteralNode): string {
-    const obj: { [key: string]: string } = {};
-    for (const [key, valueNode] of Object.entries(node.properties)) {
-      obj[key] = valueNode.accept(this);
+    const objType = node.getType(this.structTypes);
+    if (!objType) {
+      throw new Error(`Object literal does not match any declared struct type.`);
     }
-    return 'object';
+
+    const structFields = this.structTypes.get(objType.slice(7, -1))!;
+    for (const [key, valueNode] of Object.entries(node.properties)) {
+      const expectedType = structFields[key];
+      const valueType = valueNode.accept(this);
+
+      if (expectedType !== valueType) {
+        throw new Error(`Type mismatch for property '${key}': expected '${expectedType}', got '${valueType}'.`);
+      }
+    }
+
+    return objType;
   }
 
   visitBranchingNode(node: BranchingNode): void {
@@ -338,7 +349,6 @@ export class SemanticAnalyzer implements ASTVisitor {
     node.value.accept(this);
   }
 
-  // add object type
   visitIndexAccessNode(node: IndexAccessNode): void {
     const objectType = node.object.accept(this);
     const indexType = node.index.accept(this);

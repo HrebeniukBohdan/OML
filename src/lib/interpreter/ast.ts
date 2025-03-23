@@ -76,6 +76,32 @@ export class ObjectLiteralNode extends ASTNode {
   accept(visitor: ASTVisitor): any {
     return visitor.visitObjectLiteralNode(this);
   }
+
+  getType(structTypes: Map<string, { [key: string]: string }>): string | null {
+    for (const [structName, structFields] of structTypes.entries()) {
+      if (this.isMatchingStruct(structFields)) {
+        return `object<${structName}>`;
+      }
+    }
+    return null;
+  }
+
+  private isMatchingStruct(structFields: { [key: string]: string }): boolean {
+    const propertyKeys = Object.keys(this.properties);
+    const structKeys = Object.keys(structFields);
+
+    if (propertyKeys.length !== structKeys.length) {
+      return false;
+    }
+
+    for (const key of propertyKeys) {
+      if (!structFields[key]) {
+        return false;
+      }
+    }
+
+    return true;
+  }
 }
 
 export class IdentifierNode extends ASTNode {
