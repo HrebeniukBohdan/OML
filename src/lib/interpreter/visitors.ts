@@ -186,16 +186,24 @@ export class OMLToTypeScriptVisitor implements ASTVisitor {
   }
 
   visitVariableDeclarationNode(node: VariableDeclarationNode): string {
+    const type = this.mapType(node.type);
+    const name = node.name;
+    const value = node.value ? node.value.accept(this) : 'undefined';
+    return `let ${name}: ${type} = ${value};`;
+  }
+  
+  private mapType(type: string): string {
+    if (type.startsWith('object<')) {
+      return type.slice(7, -1); // Extract the object type name
+    }
     const typeMapping: { [key: string]: string } = {
       number: 'number',
       string: 'string',
       bool: 'boolean',
-      object: 'any',
+      array: 'any[]',
+      void: 'void',
     };
-
-    const varType = typeMapping[node.type] || 'any';
-    const varValue = node.value ? ` = ${node.value.accept(this)}` : '';
-    return `let ${node.name}: ${varType}${varValue};`;
+    return typeMapping[type] || 'any';
   }
 
   visitAssignmentNode(node: AssignmentNode): string {
@@ -283,9 +291,9 @@ export class OMLToTypeScriptVisitor implements ASTVisitor {
 
   visitFunctionDeclarationNode(node: FunctionDeclarationNode): string {
     const paramTypes = node.parameters
-      .map((param) => `${param.name}: ${param.type}`)
+      .map((param) => `${param.name}: ${this.mapType(param.type)}`)
       .join(', ');
-    const returnType = node.returnType === 'none' ? 'void' : node.returnType;
+    const returnType = this.mapType(node.returnType);
     const body = node.body
       .map((statement) => `  ${statement.accept(this)}`)
       .join('\n');
@@ -369,7 +377,7 @@ export class OMLToTypeScriptVisitor implements ASTVisitor {
 
   visitStructTypeNode(node: StructTypeNode): string {
     const fields = Object.entries(node.fields)
-      .map(([key, type]) => `${key}: ${type}`)
+      .map(([key, type]) => `${key}: ${this.mapType(type)}`)
       .join('; ');
     return `type ${node.name} = { ${fields} };`;
   }
@@ -663,8 +671,7 @@ export class OMLInterpreter implements ASTVisitor {
       result = returnResult; // Get a return value
     }
 
-    // Previous context restoration
-    this.variables = oldVariables;
+    this.variables = oldVariables; // Restore the previous context
 
     return result;
   }

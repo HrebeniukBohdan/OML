@@ -318,11 +318,7 @@ export class Parser {
         '~',
         "Expect '~' after parameter identifier"
       );
-      const paramType = this.consume(
-        TokenType.Type,
-        null,
-        "Expect parameter type after '~'"
-      ).value;
+      const paramType = this.parseType();
       parameters.push({ name: paramName, type: paramType });
     } while (
       this.match(TokenType.Punctuation) &&

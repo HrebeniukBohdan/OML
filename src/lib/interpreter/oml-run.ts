@@ -22,7 +22,9 @@ const omlCode = `
     address: ( street: "New-York Avenue", houseNumber: 29, apptNumber: 89 )
   );
 
-  ^^ obj -> name;
+  ^^ obj -> name . " is " . obj -> age . " years old.";
+  ^^ obj -> address -> street;
+  ^^ obj -> address -> houseNumber;
 `;
 
 `
