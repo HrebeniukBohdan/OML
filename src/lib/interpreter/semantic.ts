@@ -250,12 +250,32 @@ export class SemanticAnalyzer implements ASTVisitor {
 
   visitTypeConstructionNode(node: TypeConstructionNode): string {
     const type = node.type;
-    const valueType = node.value.accept(this);
+    const values = node.values.map(value => value.accept(this));
+
+    if (type.startsWith('array<')) {
+      const elementType = type.slice(6, -1);
+      if (values.length === 1) {
+        if (values[0] !== 'number') {
+          throw new Error(`Array size must be of type 'number', but got '${values[0]}'.`);
+        }
+        return type;
+      } else {
+        for (const value of values) {
+          if (value !== elementType) {
+            throw new Error(`Array elements must be of type '${elementType}', but got '${value}'.`);
+          }
+        }
+        return type;
+      }
+    }
 
     if (type === 'string') {
-      if (valueType !== 'number' && valueType !== 'string') {
+      if (values.length !== 1) {
+        throw new Error(`String constructor expects one argument, but got ${values.length}.`);
+      }
+      if (values[0] !== 'number' && values[0] !== 'string') {
         throw new Error(
-          `String constructor expects a number or string argument, but got ${valueType}.`
+          `String constructor expects a number or string argument, but got ${values[0]}.`
         );
       }
       return 'string';

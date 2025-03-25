@@ -156,7 +156,7 @@ export class JSONVisitor implements ASTVisitor {
     return {
       type: 'TypeConstruction',
       typeName: node.type,
-      value: node.value.accept(this),
+      values: node.values.map(value => value.accept(this)),
     };
   }
 
@@ -188,8 +188,8 @@ export class OMLToTypeScriptVisitor implements ASTVisitor {
   visitVariableDeclarationNode(node: VariableDeclarationNode): string {
     const type = this.mapType(node.type);
     const name = node.name;
-    const value = node.value ? node.value.accept(this) : 'undefined';
-    return `let ${name}: ${type} = ${value};`;
+    const defaultValueCode = node.value ?  ` = ${node.value.accept(this)}` : '';
+    return `let ${name}: ${type}${defaultValueCode};`;
   }
   
   private mapType(type: string): string {
@@ -371,8 +371,30 @@ export class OMLToTypeScriptVisitor implements ASTVisitor {
   }
 
   visitTypeConstructionNode(node: TypeConstructionNode): string {
-    const value = node.value.accept(this);
-    return `String(${value})`;
+    const type = this.mapType(node.type);
+    const values = node.values.map(value => value.accept(this));
+  
+    if (type.startsWith('array<')) {
+      const elementType = type.slice(6, -1);
+      if (values.length === 1) {
+        const size = values[0];
+        return `new Array<${elementType}>(${size})`;
+      } else {
+        return `new Array<${elementType}>(${values.join(', ')})`;
+      }
+    }
+  
+    if (type === 'string') {
+      if (values.length === 1) {
+        const value = values[0];
+        if (typeof value === 'number') {
+          return `' '.repeat(${value})`;
+        }
+        return `${value}`;
+      }
+    }
+  
+    throw new Error(`Unsupported type construction: ${type}`);
   }
 
   visitStructTypeNode(node: StructTypeNode): string {
@@ -515,8 +537,8 @@ export class ASTTreeVisitor implements ASTVisitor {
 
   visitTypeConstructionNode(node: TypeConstructionNode): string {
     const type = node.type;
-    const value = this.visitNode(node.value);
-    return `${this.indent()}${type}(${value})`;
+    const values = node.values.map(value => this.visitNode(value)).join(', ');
+    return `${this.indent()}${type}(${values})`;
   }
 
   // New helper methods to visit nodes directly
@@ -777,9 +799,27 @@ export class OMLInterpreter implements ASTVisitor {
 
   visitTypeConstructionNode(node: TypeConstructionNode): any {
     const type = node.type;
-    const value = node.value.accept(this);
+    const values = node.values.map(value => value.accept(this));
+
+    if (type.startsWith('array<')) {
+      const elementType = type.slice(6, -1);
+      if (values.length === 1) {
+        const size = values[0];
+        if (typeof size !== 'number' || size < 0) {
+          throw new Error(`Array size must be a non-negative number, but got '${size}'.`);
+        }
+        const defaultValue = this.getDefaultValue(elementType);
+        return new Array(size).fill(defaultValue);
+      } else {
+        return values;
+      }
+    }
 
     if (type === 'string') {
+      if (values.length !== 1) {
+        throw new Error(`String constructor expects one argument, but got ${values.length}.`);
+      }
+      const value = values[0];
       if (typeof value === 'number') {
         if (value < 1) {
           throw new Error(`String length must be greater than 0`);
@@ -792,6 +832,22 @@ export class OMLInterpreter implements ASTVisitor {
     }
 
     throw new Error(`Unsupported type construction: ${type}`);
+  }
+
+  private getDefaultValue(type: string): any {
+    switch (type) {
+      case 'number':
+        return 0;
+      case 'string':
+        return '';
+      case 'boolean':
+        return false;
+      case 'object':
+      case 'array':
+        return null;
+      default:
+        throw new Error(`Unsupported type: ${type}`);
+    }
   }
 
   visitStructTypeNode(node: StructTypeNode): void {

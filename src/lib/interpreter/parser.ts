@@ -502,8 +502,8 @@ export class Parser {
   private parseTypeConstruction(): TypeConstructionNode {
     const type = this.consume(
       TokenType.Type,
-      'string',
-      'Expect type "string"'
+      null,
+      'Expect type'
     ).value;
 
     this.consume(
@@ -511,14 +511,19 @@ export class Parser {
       '(',
       "Expect '(' to open type construction"
     );
-    const value = this.parseExpression();
+
+    const values: ASTNode[] = [];
+    do {
+      values.push(this.parseExpression());
+    } while (this.match(TokenType.Punctuation) && this.peek().value === ',' && this.advance());
+
     this.consume(
       TokenType.Punctuation,
       ')',
       "Expect ')' to close type construction"
     );
 
-    return new TypeConstructionNode(type, value);
+    return new TypeConstructionNode(type, values);
   }
 
   private parseIndexAccess(): IndexAccessNode {

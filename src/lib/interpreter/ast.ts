@@ -226,7 +226,7 @@ export class ReturnNode extends ASTNode {
 }
 
 export class TypeConstructionNode extends ASTNode {
-  constructor(public type: string, public value: ASTNode) {
+  constructor(public type: string, public values: ASTNode[]) {
     super();
   }
 
