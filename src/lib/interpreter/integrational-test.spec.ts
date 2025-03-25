@@ -4,7 +4,6 @@ import { SemanticAnalyzer } from './semantic';
 import { OMLToTypeScriptVisitor } from './visitors';
 import { ASTNode, ProgramNode } from './ast';
 
-// Тестування повного процесу роботи з кодом OML: від токенізації до транспіляції
 describe("OML Language Integration Tests", () => {
 
   it("should tokenize, parse, analyze, and transpile a simple variable declaration", () => {
@@ -14,7 +13,7 @@ describe("OML Language Integration Tests", () => {
       ^^ a;
     `;
 
-    // Токенізація
+    // Tokenization
     const tokenizer = new Tokenizer(code);
     const tokens: Token[] = tokenizer.tokenize();
     const expectedTokens = [
@@ -34,15 +33,15 @@ describe("OML Language Integration Tests", () => {
     ];
     expect(tokens.map(({ type, value, line, column, position }) => ({ type, value, line, column, position }))).toEqual(expectedTokens);
 
-    // Парсинг
+    // Parsing
     const parser = new Parser(code, tokens);
     const ast: ProgramNode = parser.parse() as ProgramNode;
 
-    // Семантичний аналіз
+    // Semantic analysis
     const semanticAnalyzer = new SemanticAnalyzer();
     expect(() => semanticAnalyzer.visitProgramNode(ast)).not.toThrow();
 
-    // Транспіляція
+    // Transpilation
     const tsVisitor = new OMLToTypeScriptVisitor();
     const transpiledCode = tsVisitor.visitProgramNode(ast);
     const expectedTranspiledCode = `
@@ -68,21 +67,21 @@ describe("OML Language Integration Tests", () => {
       ~
     `;
 
-    // Токенізація
+    // Tokenization
     const tokenizer = new Tokenizer(code);
     const tokens: Token[] = tokenizer.tokenize();
     expect(tokens.length).toBeGreaterThan(0);
 
-    // Парсинг
+    // Parsing
     const parser = new Parser(code, tokens);
     const ast: ProgramNode = parser.parse() as ProgramNode;
     expect(ast).toBeDefined();
 
-    // Семантичний аналіз
+    // Semantic analysis
     const semanticAnalyzer = new SemanticAnalyzer();
     expect(() => semanticAnalyzer.visitProgramNode(ast)).not.toThrow();
 
-    // Транспіляція
+    // Transpilation
     const tsVisitor = new OMLToTypeScriptVisitor();
     const transpiledCode = tsVisitor.visitProgramNode(ast);
     const expectedTranspiledCode = `
@@ -107,13 +106,12 @@ describe("OML Language Integration Tests", () => {
       <-b = a + 1; // b is undeclared
     `;
 
-    // Токенізація
+    // Tokenization
     const tokenizer = new Tokenizer(code);
     const tokens: Token[] = tokenizer.tokenize();
     const parser = new Parser(code, tokens);
     const ast: ASTNode = parser.parse();
 
-    // Семантичний аналіз повинен викинути помилку про невідомий ідентифікатор 'b'
     const semanticAnalyzer = new SemanticAnalyzer();
     expect(() => semanticAnalyzer.visitProgramNode(ast as ProgramNode)).toThrow("Undeclared variable 'b'");
   });

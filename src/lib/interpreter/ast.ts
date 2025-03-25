@@ -4,21 +4,25 @@ export abstract class ASTNode {
 
 export class ProgramNode extends ASTNode {
   constructor(public statements: ASTNode[]) {
-      super();
+    super();
   }
 
   accept(visitor: ASTVisitor) {
-      return visitor.visitProgramNode(this);
+    return visitor.visitProgramNode(this);
   }
 }
 
 export class VariableDeclarationNode extends ASTNode {
-  constructor(public name: string, public type: string, public value: ASTNode | null) {
-      super();
+  constructor(
+    public name: string,
+    public type: string,
+    public value: ASTNode | null
+  ) {
+    super();
   }
 
   accept(visitor: ASTVisitor) {
-      return visitor.visitVariableDeclarationNode(this);
+    return visitor.visitVariableDeclarationNode(this);
   }
 }
 
@@ -27,37 +31,40 @@ export class AssignmentNode extends ASTNode {
   public value: ASTNode;
 
   constructor(nameOrObjectPath: ASTNode, value: ASTNode) {
-      super();
-      this.nameOrObjectPath = nameOrObjectPath; // Ліва частина: може бути або IdentifierNode, або ObjectAccessNode
-      this.value = value; // Права частина: вираз для присвоєння
+    super();
+    this.nameOrObjectPath = nameOrObjectPath;
+    this.value = value;
   }
 
   accept(visitor: ASTVisitor): any {
-      return visitor.visitAssignmentNode(this);
+    return visitor.visitAssignmentNode(this);
   }
 }
 
 export class BinaryExpressionNode extends ASTNode {
-  constructor(public left: ASTNode, public operator: string, public right: ASTNode) {
-      super();
+  constructor(
+    public left: ASTNode,
+    public operator: string,
+    public right: ASTNode
+  ) {
+    super();
   }
 
   accept(visitor: ASTVisitor) {
-      return visitor.visitBinaryExpressionNode(this);
+    return visitor.visitBinaryExpressionNode(this);
   }
 }
 
 export class LiteralNode extends ASTNode {
   constructor(public value: any) {
-      super();
+    super();
   }
 
   accept(visitor: ASTVisitor) {
-      return visitor.visitLiteralNode(this);
+    return visitor.visitLiteralNode(this);
   }
 }
 
-// AST Node для об'єктних літералів
 export class ObjectLiteralNode extends ASTNode {
   properties: { [key: string]: ASTNode };
 
@@ -69,38 +76,72 @@ export class ObjectLiteralNode extends ASTNode {
   accept(visitor: ASTVisitor): any {
     return visitor.visitObjectLiteralNode(this);
   }
+
+  getType(structTypes: Map<string, { [key: string]: string }>): string | null {
+    for (const [structName, structFields] of structTypes.entries()) {
+      if (this.isMatchingStruct(structFields)) {
+        return `object<${structName}>`;
+      }
+    }
+    return null;
+  }
+
+  private isMatchingStruct(structFields: { [key: string]: string }): boolean {
+    const propertyKeys = Object.keys(this.properties);
+    const structKeys = Object.keys(structFields);
+
+    if (propertyKeys.length !== structKeys.length) {
+      return false;
+    }
+
+    for (const key of propertyKeys) {
+      if (!structFields[key]) {
+        return false;
+      }
+    }
+
+    return true;
+  }
 }
 
 export class IdentifierNode extends ASTNode {
   constructor(public name: string) {
-      super();
+    super();
   }
 
   accept(visitor: ASTVisitor) {
-      return visitor.visitIdentifierNode(this);
+    return visitor.visitIdentifierNode(this);
   }
 }
 
-// Вузол для доступу до властивості об'єкта
-export class ObjectAccessNode extends ASTNode {
-  public object: ASTNode;   // Це може бути або змінна, або інший ObjectAccessNode (для вкладеного доступу)
-  public property: string;  // Ім'я властивості, до якої ми отримуємо доступ
-
-  constructor(object: ASTNode, property: string) {
+export class IndexAccessNode extends ASTNode {
+  constructor(public object: ASTNode, public index: ASTNode) {
     super();
-    this.object = object;   // Об'єкт, до якого ми отримуємо доступ
-    this.property = property; // Властивість об'єкта
   }
 
   accept(visitor: ASTVisitor): any {
-    return visitor.visitObjectAccessNode(this);
+    return visitor.visitIndexAccessNode(this);
+  }
+}
+
+export class IndexAssignmentNode extends ASTNode {
+  constructor(
+    public object: ASTNode,
+    public index: ASTNode,
+    public value: ASTNode
+  ) {
+    super();
+  }
+
+  accept(visitor: ASTVisitor): any {
+    return visitor.visitIndexAssignmentNode(this);
   }
 }
 
 export class FunctionDeclarationNode extends ASTNode {
   constructor(
     public name: string,
-    public parameters: { name: string, type: string }[], // Зберігаємо типи параметрів
+    public parameters: { name: string; type: string }[],
     public returnType: string,
     public body: ASTNode[]
   ) {
@@ -108,44 +149,41 @@ export class FunctionDeclarationNode extends ASTNode {
   }
 
   accept(visitor: ASTVisitor) {
-      return visitor.visitFunctionDeclarationNode(this);
+    return visitor.visitFunctionDeclarationNode(this);
   }
 }
 
 export class FunctionCallNode extends ASTNode {
   constructor(public name: string, public args: ASTNode[]) {
-      super();
+    super();
   }
 
   accept(visitor: ASTVisitor) {
-      return visitor.visitFunctionCallNode(this);
+    return visitor.visitFunctionCallNode(this);
   }
 }
 
 export class BranchingNode extends ASTNode {
   constructor(
-      public condition: ASTNode,      // Умова розгалуження
-      public trueBranch: ASTNode[],   // Гілка для істинної умови
-      public falseBranch: ASTNode[]   // Гілка для хибної умови (else)
+    public condition: ASTNode,
+    public trueBranch: ASTNode[],
+    public falseBranch: ASTNode[]
   ) {
-      super();
+    super();
   }
 
   accept(visitor: ASTVisitor) {
-      return visitor.visitBranchingNode(this);
+    return visitor.visitBranchingNode(this);
   }
 }
 
 export class LoopNode extends ASTNode {
-  constructor(
-      public condition: ASTNode,  // Умова циклу
-      public body: ASTNode[]      // Тіло циклу
-  ) {
-      super();
+  constructor(public condition: ASTNode, public body: ASTNode[]) {
+    super();
   }
 
   accept(visitor: ASTVisitor) {
-      return visitor.visitLoopNode(this);
+    return visitor.visitLoopNode(this);
   }
 }
 
@@ -187,6 +225,36 @@ export class ReturnNode extends ASTNode {
   }
 }
 
+export class TypeConstructionNode extends ASTNode {
+  constructor(public type: string, public values: ASTNode[]) {
+    super();
+  }
+
+  accept(visitor: ASTVisitor): any {
+    return visitor.visitTypeConstructionNode(this);
+  }
+}
+
+export class StructTypeNode extends ASTNode {
+  constructor(public name: string, public fields: { [key: string]: string }) {
+    super();
+  }
+
+  accept(visitor: ASTVisitor): any {
+    return visitor.visitStructTypeNode(this);
+  }
+}
+
+export class PropertyAccessNode extends ASTNode {
+  constructor(public object: ASTNode, public property: string, public isAssignment: boolean = false) {
+    super();
+  }
+
+  accept(visitor: ASTVisitor): any {
+    return visitor.visitPropertyAccessNode(this);
+  }
+}
+
 export interface ASTVisitor {
   visitProgramNode(node: ProgramNode): any;
   visitVariableDeclarationNode(node: VariableDeclarationNode): any;
@@ -199,52 +267,12 @@ export interface ASTVisitor {
   visitLiteralNode(node: LiteralNode): any;
   visitIdentifierNode(node: IdentifierNode): any;
   visitObjectLiteralNode(node: ObjectLiteralNode): any;
-  visitObjectAccessNode(node: ObjectAccessNode): any;
+  visitIndexAccessNode(node: IndexAccessNode): any;
+  visitIndexAssignmentNode(node: IndexAssignmentNode): any;
   visitOutputNode(node: OutputNode): any;
   visitUnaryExpressionNode(node: UnaryExpressionNode): any;
   visitReturnNode(node: ReturnNode): any;
+  visitTypeConstructionNode(node: TypeConstructionNode): any;
+  visitStructTypeNode(node: StructTypeNode): any;
+  visitPropertyAccessNode(node: PropertyAccessNode): any;
 }
-
-function abs(x: number): number {
-  if (x >= 0) {
-    return x;
-  } else {
-    return -x;
-  }
-}
-function sqrt(num: number): number {
-  if (num < 0) {
-    return NaN;
-  }
-  let approx: number;
-  approx = num;
-  let betterApprox: number;
-  betterApprox = approx + num / approx / 2;
-  while (abs(approx - betterApprox) > 1e-8) {
-    approx = betterApprox;
-    betterApprox = approx + num / approx / 2;
-  }
-  return betterApprox;
-}
-function solveQuadratic(a: number, b: number, c: number): void {
-  let discriminant: number;
-  let x1: number;
-  let x2: number;
-  discriminant = b * b - 4 * a * c;
-  if (discriminant < 0) {
-    console.log('No real solutions');
-  }
-  if (discriminant == 0) {
-    x1 = (-b / 2) * a;
-    console.log('One solution: ');
-    console.log(x1);
-  }
-  if (discriminant > 0) {
-    x1 = -b + (sqrt(discriminant) / 2) * a;
-    x2 = -b - (sqrt(discriminant) / 2) * a;
-    console.log('Two solutions: ');
-    console.log(x1);
-    console.log(x2);
-  }
-}
-//solveQuadratic(1, 7, -8);

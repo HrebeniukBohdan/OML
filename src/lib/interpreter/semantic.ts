@@ -7,13 +7,17 @@ import {
   FunctionCallNode,
   FunctionDeclarationNode,
   IdentifierNode,
+  IndexAccessNode,
+  IndexAssignmentNode,
   LiteralNode,
   LoopNode,
-  ObjectAccessNode,
   ObjectLiteralNode,
   OutputNode,
   ProgramNode,
+  PropertyAccessNode,
   ReturnNode,
+  StructTypeNode,
+  TypeConstructionNode,
   UnaryExpressionNode,
   VariableDeclarationNode,
 } from './ast';
@@ -43,7 +47,6 @@ export class SymbolTable {
     return null;
   }
 
-  // Перевіряє наявність змінної тільки в поточному скоупі
   public isDeclaredInCurrentScope(name: string): boolean {
     return this.symbols.has(name);
   }
@@ -51,27 +54,28 @@ export class SymbolTable {
 
 export class SemanticAnalyzer implements ASTVisitor {
   private currentScope: SymbolTable = new SymbolTable();
-  private functions: Map<string, FunctionDeclarationNode> = new Map(); // Таблиця функцій
-  private currentFunctionReturnType: string | null = null; // Для перевірки типу повернення функції
+  private functions: Map<string, FunctionDeclarationNode> = new Map();
+  private currentFunctionReturnType: string | null = null;
+  private structTypes: Map<string, { [key: string]: string }> = new Map();
 
   private enterScope(): void {
-    this.currentScope = new SymbolTable(this.currentScope); // Створюємо новий вкладений скоуп
+    this.currentScope = new SymbolTable(this.currentScope);
   }
 
   private exitScope(): void {
     if (this.currentScope.enclosingScope) {
-      this.currentScope = this.currentScope.enclosingScope; // Повертаємось до зовнішнього скоупу
+      this.currentScope = this.currentScope.enclosingScope;
     } else {
-      throw new Error("No enclosing scope to exit to.");
+      throw new Error('No enclosing scope to exit to.');
     }
   }
 
   private declareVariable(name: string, type: string): void {
-    this.currentScope.declareVariable(name, type); // Оголошуємо змінну у поточному скоупі
+    this.currentScope.declareVariable(name, type);
   }
 
   private lookupVariable(name: string): string | null {
-    return this.currentScope.lookupVariable(name); // Шукаємо змінну у поточному скоупі і в усіх зовнішніх
+    return this.currentScope.lookupVariable(name);
   }
 
   visitProgramNode(node: ProgramNode): void {
@@ -81,7 +85,6 @@ export class SemanticAnalyzer implements ASTVisitor {
   }
 
   visitVariableDeclarationNode(node: VariableDeclarationNode): void {
-    // Перевіряємо наявність змінної тільки в поточному скоупі
     if (this.currentScope.isDeclaredInCurrentScope(node.name)) {
       throw new Error(`Variable '${node.name}' is already declared.`);
     }
@@ -113,75 +116,51 @@ export class SemanticAnalyzer implements ASTVisitor {
 
   visitFunctionDeclarationNode(node: FunctionDeclarationNode): void {
     if (this.functions.has(node.name)) {
-        throw new Error(`Function '${node.name}' is already declared.`);
-    }
-    this.functions.set(node.name, node);
-    this.currentFunctionReturnType = node.returnType;
-
-    this.enterScope();
-
-    // Оголошуємо параметри у функціональному скоупі
-    node.parameters.forEach(param => {
-        this.declareVariable(param.name, param.type);
-    });
-
-    // Перевірка всіх операторів у тілі функції
-    for (const statement of node.body) {
-        statement.accept(this);
-    }
-
-    // Використовуємо метод для перевірки наявності return
-    if (this.currentFunctionReturnType !== 'void' && !this.hasReturnStatement(node.body)) {
-        throw new Error(`Missing return statement in function '${node.name}'.`);
-    }
-
-    this.exitScope();
-    this.currentFunctionReturnType = null;
-  }
-
-  // Метод для рекурсивної перевірки наявності ReturnNode
-  private hasReturnStatement(statements: ASTNode[]): boolean {
-      for (const statement of statements) {
-          if (statement instanceof ReturnNode) {
-              return true;
-          } else if (statement instanceof BranchingNode) {
-              // Перевіряємо true і false гілки розгалуження
-              if (this.hasReturnStatement(statement.trueBranch) || this.hasReturnStatement(statement.falseBranch)) {
-                  return true;
-              }
-          } else if (statement instanceof LoopNode) {
-              // Перевірка тіла циклу
-              if (this.hasReturnStatement(statement.body)) {
-                  return true;
-              }
-          }
-      }
-      return false;
-  }
-
-  /*
-  visitFunctionDeclarationNode(node: FunctionDeclarationNode): void {
-    if (this.functions.has(node.name)) {
       throw new Error(`Function '${node.name}' is already declared.`);
     }
     this.functions.set(node.name, node);
     this.currentFunctionReturnType = node.returnType;
-  
-    // Входимо в новий скоуп для параметрів функції та тіла
+
     this.enterScope();
+
     node.parameters.forEach((param) => {
-      this.declareVariable(param.name, param.type); // Використовуємо declareVariable для параметрів
+      this.declareVariable(param.name, param.type);
     });
-  
-    // Перевіряємо тіло функції
+
     for (const statement of node.body) {
       statement.accept(this);
     }
-  
-    // Виходимо з локального скоупу функції
+
+    if (
+      this.currentFunctionReturnType !== 'void' &&
+      !this.hasReturnStatement(node.body)
+    ) {
+      throw new Error(`Missing return statement in function '${node.name}'.`);
+    }
+
     this.exitScope();
     this.currentFunctionReturnType = null;
-  }*/  
+  }
+
+  private hasReturnStatement(statements: ASTNode[]): boolean {
+    for (const statement of statements) {
+      if (statement instanceof ReturnNode) {
+        return true;
+      } else if (statement instanceof BranchingNode) {
+        if (
+          this.hasReturnStatement(statement.trueBranch) ||
+          this.hasReturnStatement(statement.falseBranch)
+        ) {
+          return true;
+        }
+      } else if (statement instanceof LoopNode) {
+        if (this.hasReturnStatement(statement.body)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
 
   visitFunctionCallNode(node: FunctionCallNode): string {
     const func = this.functions.get(node.name);
@@ -213,10 +192,15 @@ export class SemanticAnalyzer implements ASTVisitor {
     const rightType = node.right.accept(this);
 
     if (node.operator === '.') {
-      if (['string', 'number', 'bool'].includes(leftType) && ['string', 'number', 'bool'].includes(rightType)) {
-          return 'string';  // Конкатенація завжди повертає рядок
+      if (
+        ['string', 'number', 'bool'].includes(leftType) &&
+        ['string', 'number', 'bool'].includes(rightType)
+      ) {
+        return 'string';
       } else {
-          throw new Error(`Invalid types for concatenation: '${leftType}' and '${rightType}'.`);
+        throw new Error(
+          `Invalid types for concatenation: '${leftType}' and '${rightType}'.`
+        );
       }
     }
 
@@ -264,6 +248,42 @@ export class SemanticAnalyzer implements ASTVisitor {
     return typeof node.value;
   }
 
+  visitTypeConstructionNode(node: TypeConstructionNode): string {
+    const type = node.type;
+    const values = node.values.map(value => value.accept(this));
+
+    if (type.startsWith('array<')) {
+      const elementType = type.slice(6, -1);
+      if (values.length === 1) {
+        if (values[0] !== 'number') {
+          throw new Error(`Array size must be of type 'number', but got '${values[0]}'.`);
+        }
+        return type;
+      } else {
+        for (const value of values) {
+          if (value !== elementType) {
+            throw new Error(`Array elements must be of type '${elementType}', but got '${value}'.`);
+          }
+        }
+        return type;
+      }
+    }
+
+    if (type === 'string') {
+      if (values.length !== 1) {
+        throw new Error(`String constructor expects one argument, but got ${values.length}.`);
+      }
+      if (values[0] !== 'number' && values[0] !== 'string') {
+        throw new Error(
+          `String constructor expects a number or string argument, but got ${values[0]}.`
+        );
+      }
+      return 'string';
+    }
+
+    throw new Error(`Unsupported type construction: ${type}`);
+  }
+
   visitIdentifierNode(node: IdentifierNode): string {
     const variableType = this.lookupVariable(node.name);
     if (!variableType) {
@@ -295,21 +315,22 @@ export class SemanticAnalyzer implements ASTVisitor {
   }
 
   visitObjectLiteralNode(node: ObjectLiteralNode): string {
-    const obj: { [key: string]: string } = {};
-    for (const [key, valueNode] of Object.entries(node.properties)) {
-      obj[key] = valueNode.accept(this);
+    const objType = node.getType(this.structTypes);
+    if (!objType) {
+      throw new Error(`Object literal does not match any declared struct type.`);
     }
-    return 'object';
-  }
 
-  visitObjectAccessNode(node: ObjectAccessNode): string {
-    const objectType = node.object.accept(this);
-    if (objectType !== 'object') {
-      throw new Error(
-        `Type mismatch: expected 'object' for property access, but got '${objectType}'.`
-      );
+    const structFields = this.structTypes.get(objType.slice(7, -1))!;
+    for (const [key, valueNode] of Object.entries(node.properties)) {
+      const expectedType = structFields[key];
+      const valueType = valueNode.accept(this);
+
+      if (expectedType !== valueType) {
+        throw new Error(`Type mismatch for property '${key}': expected '${expectedType}', got '${valueType}'.`);
+      }
     }
-    return 'any';
+
+    return objType;
   }
 
   visitBranchingNode(node: BranchingNode): void {
@@ -320,7 +341,6 @@ export class SemanticAnalyzer implements ASTVisitor {
       );
     }
 
-    // Входимо у вкладений скоуп для гілок розгалуження
     this.enterScope();
     node.trueBranch.forEach((stmt) => stmt.accept(this));
     this.exitScope();
@@ -346,7 +366,94 @@ export class SemanticAnalyzer implements ASTVisitor {
   }
 
   visitOutputNode(node: OutputNode): void {
-    node.value.accept(this); // Перевірка типу значення, яке виводимо
+    node.value.accept(this);
+  }
+
+  visitIndexAccessNode(node: IndexAccessNode): void {
+    const objectType = node.object.accept(this);
+    const indexType = node.index.accept(this);
+
+    if (objectType === 'string') {
+      if (indexType !== 'number') {
+        throw new Error(
+          `Index for string must be of type 'number', but got '${indexType}'.`
+        );
+      }
+      return;
+    }
+
+    throw new Error(`Unsupported index access on type '${objectType}'.`);
+  }
+
+  visitIndexAssignmentNode(node: IndexAssignmentNode): void {
+    const objectType = node.object.accept(this);
+    const indexType = node.index.accept(this);
+    const valueType = node.value.accept(this);
+
+    if (objectType === 'string') {
+      if (indexType !== 'number') {
+        throw new Error(
+          `Index for string must be of type 'number', but got '${indexType}'.`
+        );
+      }
+      if (valueType !== 'string') {
+        throw new Error(
+          `Value for string assignment must be a string type, but got '${valueType}'.`
+        );
+      }
+      if (
+        node.value instanceof LiteralNode &&
+        typeof node.value.value === 'string'
+      ) {
+        if (node.value.value.length !== 1) {
+          throw new Error(
+            `Value for string assignment must be a single character, but got '${node.value.value}'.`
+          );
+        }
+      }
+      return;
+    }
+
+    throw new Error(`Unsupported index assignment on type '${objectType}'.`);
+  }
+
+  visitStructTypeNode(node: StructTypeNode): void {
+    if (this.structTypes.has(node.name)) {
+      throw new Error(`Struct type '${node.name}' is already declared.`);
+    }
+    this.structTypes.set(node.name, node.fields);
+  }
+
+  visitPropertyAccessNode(node: PropertyAccessNode): string {
+    const objectType = node.object.accept(this);
+
+    if (objectType === 'string' && node.property === 'length') {
+      if (node.isAssignment) {
+        throw new Error(`Cannot assign to read-only property 'length' of type 'string'.`);
+      }
+      return 'number';
+    }
+
+    if (objectType.startsWith('array<') && node.property === 'length') {
+      if (node.isAssignment) {
+        throw new Error(`Cannot assign to read-only property 'length' of type 'array'.`);
+      }
+      return 'number';
+    }
+
+    if (objectType.startsWith('object<')) {
+      const structTypeName = objectType.slice(7, -1);
+      const structType = this.structTypes.get(structTypeName);
+      if (!structType) {
+        throw new Error(`Struct type '${structTypeName}' is not declared.`);
+      }
+      const propertyType = structType[node.property];
+      if (!propertyType) {
+        throw new Error(`Property '${node.property}' does not exist on type '${objectType}'.`);
+      }
+      return propertyType;
+    }
+
+    throw new Error(`Unsupported property access on type '${objectType}'.`);
   }
 }
-

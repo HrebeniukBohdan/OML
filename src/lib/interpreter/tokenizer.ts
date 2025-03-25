@@ -1,34 +1,35 @@
 import { TokenizationError } from "./errors";
 
-// Enum для типів токенів
+// Enum for token types
 export enum TokenType {
   SingleLineComment = "single_line_comment",
   MultiLineComment = "multi_line_comment",
   Whitespace = "whitespace",
   Return = "return",
-  AccessOperator = "access_operator",  // Переміщено вгору
+  AccessOperator = "access_operator",  // Moved up
   Assignment = "assignment",
   Addition = "addition",
   FunctionDeclaration = "function_declaration",
   Identifier = "identifier",
-  Number = "number", // Числа
-  String = "string", // Літерали для рядків
+  Number = "number", // Numbers
+  String = "string", // String literals
   Operator = "operator",
   Punctuation = "punctuation",
-  Equals = "equals",  // Токен для "="
+  Equals = "equals",  // Token for "="
   Branching = "branching",
   Loop = "loop",
   Output = "output",
   Colon = "colon",
-  Type = "type",  // Типи (number, string, bool і т.д.)
-  LogicOperator = "logic_operator",  // Логічні оператори
-  AtSymbol = "at_symbol", // Символ @
-  None = "none",  // Токен для значення "none"
-  Bool = "bool",  // Логічні значення
-  Dot = "dot"
+  Type = "type",  // Types (number, string, bool, etc.)
+  LogicOperator = "logic_operator",  // Logical operators
+  AtSymbol = "at_symbol", // Symbol @
+  None = "none",  // Token for "none" value
+  Bool = "bool",  // Boolean values
+  Dot = "dot",
+  StructType = "struct_type",
 }
 
-// Тип для об'єкта регулярного виразу і типу токена
+// Type for regex object and token type
 export type TokenPattern = {
   type: TokenType;
   regex: RegExp;
@@ -39,7 +40,7 @@ export type Token = {
   value: string;
   line: number;
   column: number;
-  position: number;  // Додаємо поле для позиції
+  position: number;  // Add field for position
 };
 
 export class Tokenizer {
@@ -53,23 +54,24 @@ export class Tokenizer {
       { type: TokenType.SingleLineComment, regex: /^\/\/[^\n]*/ },
       { type: TokenType.MultiLineComment, regex: /^\/\*[\s\S]*?\*\// },
       { type: TokenType.Whitespace, regex: /^\s+/ },
-      { type: TokenType.AtSymbol, regex: /^@/ }, // Символ @ для функцій і повернення
-      { type: TokenType.AccessOperator, regex: /^->/ },  // Оператор доступу -> (переміщено вгору)
-      { type: TokenType.Assignment, regex: /^<-/ }, // Оператор присвоєння
-      { type: TokenType.Addition, regex: /^<>/ }, // Оператор додавання або конкатенації
+      { type: TokenType.AtSymbol, regex: /^@/ }, // Symbol @ for functions and return
+      { type: TokenType.AccessOperator, regex: /^->/ },  // Access operator -> (moved up)
+      { type: TokenType.Assignment, regex: /^<-/ }, // Assignment operator
+      { type: TokenType.Addition, regex: /^<>/ }, // Addition or concatenation operator
       { type: TokenType.FunctionDeclaration, regex: /^::/ },
-      { type: TokenType.LogicOperator, regex: /^(==|!=|&&|\|\||<=|>=|<|>)/ },  // Логічні оператори
+      { type: TokenType.LogicOperator, regex: /^(==|!=|&&|\|\||<=|>=|<|>)/ },  // Logical operators
       { type: TokenType.Operator, regex: /^[+\-*/]/ },
       { type: TokenType.Output, regex: /^\^\^/ },
       { type: TokenType.Branching, regex: /^\?/ },
-      { type: TokenType.Equals, regex: /^=/ }, // Токен для "="
+      { type: TokenType.Equals, regex: /^=/ }, // Token for "="
       { type: TokenType.Loop, regex: /^%/ },
-      { type: TokenType.Type, regex: /^(void|number|bool|string|object)/ },  // Типи змінних
-      { type: TokenType.None, regex: /^none/ },  // Токен для значення "none"
-      { type: TokenType.Bool, regex: /^(yes|no)/ },  // Значення логічних змінних
-      { type: TokenType.Identifier, regex: /^[a-zA-Z_][a-zA-Z0-9_]*/ }, // Для ідентифікаторів
-      { type: TokenType.Number, regex: /^[0-9]+(\.[0-9]+)?/ }, // Підтримка цілих і чисел з плаваючою комою
-      { type: TokenType.String, regex: /^"[^"]*"/ }, // Літерали для рядків
+      { type: TokenType.Type, regex: /^(array|void|number|bool|string|object)/ },  // Variable types
+      { type: TokenType.None, regex: /^none/ },  // Token for "none" value
+      { type: TokenType.Bool, regex: /^(yes|no)/ },  // Boolean variable values
+      { type: TokenType.StructType, regex: /^\$[a-zA-Z_][a-zA-Z0-9_]*/ }, // Struct type identifier
+      { type: TokenType.Identifier, regex: /^[a-zA-Z_][a-zA-Z0-9_]*/ }, // For identifiers
+      { type: TokenType.Number, regex: /^[0-9]+(\.[0-9]+)?/ }, // Support for integers and floating-point numbers
+      { type: TokenType.String, regex: /^"[^"]*"/ }, // String literals
       { type: TokenType.Punctuation, regex: /^[\(\)\{\}\[\],;|~&]/ },
       { type: TokenType.Colon, regex: /^:/ },
       { type: TokenType.Dot, regex: /^\./ },
@@ -79,7 +81,7 @@ export class Tokenizer {
       this.code = code;
   }
 
-  // Основна функція для отримання токенів
+  // Main function to get tokens
   public tokenize(): Token[] {
       while (this.position < this.code.length) {
           const token = this.getNextToken();
@@ -94,7 +96,7 @@ export class Tokenizer {
       return this.tokens;
   }
 
-  // Повертає наступний токен на основі регулярних виразів
+  // Returns the next token based on regex patterns
   private getNextToken(): Token | null {
       const remainingCode = this.code.slice(this.position);
 
@@ -107,7 +109,7 @@ export class Tokenizer {
                   value: tokenValue,
                   line: this.line,
                   column: this.column,
-                  position: this.position  // Зберігаємо поточну позицію
+                  position: this.position  // Save current position
               };
 
               this.updatePosition(tokenValue);
@@ -118,12 +120,12 @@ export class Tokenizer {
       return null;
   }
 
-  // Оновлює позицію курсору після обробки токена
+  // Updates cursor position after processing a token
   private updatePosition(tokenValue: string): void {
       for (const char of tokenValue) {
           if (char === "\n") {
               this.line++;
-              this.column = 1;  // Повертаємось на початок нового рядка
+              this.column = 1;  // Return to the beginning of the new line
           } else {
               this.column++;
           }
@@ -131,7 +133,7 @@ export class Tokenizer {
       this.position += tokenValue.length;
   }
 
-  // Викидає помилку з контекстом (шматком коду до і після токена)
+  // Throws an error with context (snippet of code before and after the token)
   private throwErrorWithContext(message: string): void {
     const snippetStart = Math.max(0, this.position - 40); 
     const snippetEnd = Math.min(this.code.length, this.position + 40); 
@@ -149,7 +151,8 @@ export class Tokenizer {
   }
 }
 
-// Використання Tokenizer
+// Usage of Tokenizer
+/*
 const code = `
 @main::none -> void |
   +a~number;
@@ -176,3 +179,4 @@ try {
 } catch (e) {
   console.error(e.message);
 }
+*/

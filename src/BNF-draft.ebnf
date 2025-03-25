@@ -52,7 +52,7 @@
 
 <object_property> ::= <identifier> ":" <expression>
 
-<property_access> ::= <identifier> "->" <identifier>
+<property_access> ::= <identifier> "->" <identifier>  // Only readable properties
 
 <index_access> ::= <identifier> "->" "(" <expression> ")"
 
@@ -60,6 +60,8 @@
 
 <type_construction> ::= "string" "(" <expression> ")"
                       | "array" "<" <type> ">" "(" <arguments> ")"
+
+<string_method> ::= "substring" | "replace" | "toUpper" | "toLower"
 
 <parameters> ::= "none"
                | "<" <parameter> ("," <parameter>)* ">"
@@ -74,7 +76,7 @@
 
 <identifier> ::= [a-zA-Z_][a-zA-Z0-9_]*
 
-<type> ::= "number" | "string" | "boolean" | "array<" <type> ">" | "object<" <identifier> ">" | "void"
+<type> ::= "number" | "string" | "boolean" | "array<T>" | "object<T>" | "void" | <struct_type>
 
 <struct_type> ::= "$" <identifier> "::" "{" <struct_field> (<struct_field>)* "}"
 

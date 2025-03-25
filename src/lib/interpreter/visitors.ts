@@ -7,13 +7,17 @@ import {
   FunctionCallNode,
   FunctionDeclarationNode,
   IdentifierNode,
+  IndexAccessNode,
+  IndexAssignmentNode,
   LiteralNode,
   LoopNode,
-  ObjectAccessNode,
   ObjectLiteralNode,
   OutputNode,
   ProgramNode,
+  PropertyAccessNode,
   ReturnNode,
+  StructTypeNode,
+  TypeConstructionNode,
   UnaryExpressionNode,
   VariableDeclarationNode,
 } from './ast';
@@ -42,7 +46,7 @@ export class JSONVisitor implements ASTVisitor {
       operator: node.operator,
       right: node.right.accept(this),
     };
-  }  
+  }
 
   visitFunctionDeclarationNode(node: FunctionDeclarationNode): any {
     return {
@@ -109,93 +113,168 @@ export class JSONVisitor implements ASTVisitor {
     };
   }
 
-  visitObjectAccessNode(node: ObjectAccessNode): any {
-    return {
-      type: 'ObjectAccess',
-      object: node.object.accept(this), // Викликаємо accept, щоб обробити об'єкт, який може бути вкладеним
-      property: node.property, // Властивість, до якої здійснюється доступ
-    };
-  }
-
   visitOutputNode(node: OutputNode): any {
     return {
       type: 'Output',
-      value: node.value.accept(this), // Обробляємо значення через візітор
+      value: node.value.accept(this),
     };
   }
 
   visitUnaryExpressionNode(node: UnaryExpressionNode): any {
     return {
-        type: "UnaryExpression",
-        operator: node.operator,
-        operand: node.operand.accept(this) // Обробляємо операнд
+      type: 'UnaryExpression',
+      operator: node.operator,
+      operand: node.operand.accept(this),
     };
   }
 
   visitReturnNode(node: ReturnNode): any {
     return {
       type: 'Return',
-      returnValue: node.returnValue.accept(this)
+      returnValue: node.returnValue.accept(this),
     };
-  }  
+  }
+
+  visitIndexAccessNode(node: IndexAccessNode): any {
+    return {
+      type: 'IndexAccess',
+      object: node.object.accept(this),
+      index: node.index.accept(this),
+    };
+  }
+
+  visitIndexAssignmentNode(node: IndexAssignmentNode): any {
+    return {
+      type: 'IndexAssignment',
+      object: node.object.accept(this),
+      index: node.index.accept(this),
+      value: node.value.accept(this),
+    };
+  }
+
+  visitTypeConstructionNode(node: TypeConstructionNode): any {
+    return {
+      type: 'TypeConstruction',
+      typeName: node.type,
+      values: node.values.map(value => value.accept(this)),
+    };
+  }
+
+  visitStructTypeNode(node: StructTypeNode): any {
+    return {
+      type: 'StructType',
+      name: node.name,
+      fields: node.fields,
+    };
+  }
+
+  visitPropertyAccessNode(node: PropertyAccessNode): any {
+    return {
+      type: 'PropertyAccess',
+      object: node.object.accept(this),
+      property: node.property,
+      isAssignment: node.isAssignment,
+    };
+  }
 }
 
 export class OMLToTypeScriptVisitor implements ASTVisitor {
-
   visitProgramNode(node: ProgramNode): string {
-    return node.statements.map(statement => statement.accept(this)).join('\n');
+    return node.statements
+      .map((statement) => statement.accept(this))
+      .join('\n');
   }
 
   visitVariableDeclarationNode(node: VariableDeclarationNode): string {
+    const type = this.mapType(node.type);
+    const name = node.name;
+    const defaultValueCode = node.value ?  ` = ${node.value.accept(this)}` : '';
+    return `let ${name}: ${type}${defaultValueCode};`;
+  }
+  
+  private mapType(type: string): string {
+    if (type.startsWith('object<')) {
+      return type.slice(7, -1); // Extract the object type name
+    }
+    if (type.startsWith('array<')) {
+      return 'Array<' + this.mapType(type.slice(6, -1)) + '>';
+    }
+    
     const typeMapping: { [key: string]: string } = {
-      'number': 'number',
-      'string': 'string',
-      'bool': 'boolean',
-      'object': 'any'
+      number: 'number',
+      string: 'string',
+      bool: 'boolean',
+      void: 'void',
     };
-
-    const varType = typeMapping[node.type] || 'any';
-    const varValue = node.value ? ` = ${node.value.accept(this)}` : '';
-    return `let ${node.name}: ${varType}${varValue};`;
+    return typeMapping[type] || 'any';
   }
 
   visitAssignmentNode(node: AssignmentNode): string {
-    return `${node.nameOrObjectPath.accept(this)} = ${node.value.accept(this)};`;
+    return `${node.nameOrObjectPath.accept(this)} = ${node.value.accept(
+      this
+    )};`;
   }
 
   private getOperatorPrecedence(operator: string): number {
     switch (operator) {
-      case '||': return 1;
-      case '&&': return 2;
-      case '==': case '!=': return 3;
-      case '<': case '>': case '<=': case '>=': return 4;
-      case '+': case '-': return 5;
-      case '*': case '/': return 6;
-      case '.': return 0;  // Пріоритет для конкатенації
-      default: return 0;
+      case '||':
+        return 1;
+      case '&&':
+        return 2;
+      case '==':
+      case '!=':
+        return 3;
+      case '<':
+      case '>':
+      case '<=':
+      case '>=':
+        return 4;
+      case '+':
+      case '-':
+        return 5;
+      case '*':
+      case '/':
+        return 6;
+      case '.':
+        return 0;
+      default:
+        return 0;
     }
   }
 
-  private wrapWithParentheses(expression: string, parentPrecedence: number, currentPrecedence: number): string {
+  private wrapWithParentheses(
+    expression: string,
+    parentPrecedence: number,
+    currentPrecedence: number
+  ): string {
     if (currentPrecedence < parentPrecedence) {
       return `(${expression})`;
     }
     return expression;
   }
 
-  visitBinaryExpressionNode(node: BinaryExpressionNode, parentPrecedence: number = 0): string {
+  visitBinaryExpressionNode(
+    node: BinaryExpressionNode,
+    parentPrecedence: number = 0
+  ): string {
     const operatorPrecedence = this.getOperatorPrecedence(node.operator);
 
-    const left = node.left instanceof BinaryExpressionNode
-      ? this.visitBinaryExpressionNode(node.left, operatorPrecedence)
-      : node.left.accept(this);
-    const right = node.right instanceof BinaryExpressionNode
-      ? this.visitBinaryExpressionNode(node.right, operatorPrecedence)
-      : node.right.accept(this);
+    const left =
+      node.left instanceof BinaryExpressionNode
+        ? this.visitBinaryExpressionNode(node.left, operatorPrecedence)
+        : node.left.accept(this);
+    const right =
+      node.right instanceof BinaryExpressionNode
+        ? this.visitBinaryExpressionNode(node.right, operatorPrecedence)
+        : node.right.accept(this);
 
-    const operator = node.operator === '.' ? '+' : node.operator; // Замінюємо '.' на '+' для TypeScript
+    const operator = node.operator === '.' ? '+' : node.operator;
 
-    return this.wrapWithParentheses(`${left} ${operator} ${right}`, parentPrecedence, operatorPrecedence);
+    return this.wrapWithParentheses(
+      `${left} ${operator} ${right}`,
+      parentPrecedence,
+      operatorPrecedence
+    );
   }
 
   visitLiteralNode(node: LiteralNode): string {
@@ -213,32 +292,39 @@ export class OMLToTypeScriptVisitor implements ASTVisitor {
     return `{ ${properties} }`;
   }
 
-  visitObjectAccessNode(node: ObjectAccessNode): string {
-    return `${node.object.accept(this)}.${node.property}`;
-  }
-
   visitFunctionDeclarationNode(node: FunctionDeclarationNode): string {
     const paramTypes = node.parameters
-      .map(param => `${param.name}: ${param.type}`)
+      .map((param) => `${param.name}: ${this.mapType(param.type)}`)
       .join(', ');
-    const returnType = node.returnType === 'none' ? 'void' : node.returnType;
-    const body = node.body.map(statement => `  ${statement.accept(this)}`).join('\n');
+    const returnType = this.mapType(node.returnType);
+    const body = node.body
+      .map((statement) => `  ${statement.accept(this)}`)
+      .join('\n');
     return `function ${node.name}(${paramTypes}): ${returnType} {\n${body}\n}`;
   }
 
   visitFunctionCallNode(node: FunctionCallNode): string {
-    const args = node.args.map(arg => arg.accept(this)).join(', ');
+    const args = node.args.map((arg) => arg.accept(this)).join(', ');
     return `${node.name}(${args})`;
   }
 
   visitBranchingNode(node: BranchingNode): string {
-    const trueBranch = node.trueBranch.map(stmt => `  ${stmt.accept(this)}`).join('\n');
-    const falseBranch = node.falseBranch.length > 0 ? ` else {\n${node.falseBranch.map(stmt => `  ${stmt.accept(this)}`).join('\n')}\n}` : '';
-    return `if (${node.condition.accept(this)}) {\n${trueBranch}\n}${falseBranch}`;
+    const trueBranch = node.trueBranch
+      .map((stmt) => `  ${stmt.accept(this)}`)
+      .join('\n');
+    const falseBranch =
+      node.falseBranch.length > 0
+        ? ` else {\n${node.falseBranch
+            .map((stmt) => `  ${stmt.accept(this)}`)
+            .join('\n')}\n}`
+        : '';
+    return `if (${node.condition.accept(
+      this
+    )}) {\n${trueBranch}\n}${falseBranch}`;
   }
 
   visitLoopNode(node: LoopNode): string {
-    const body = node.body.map(stmt => `  ${stmt.accept(this)}`).join('\n');
+    const body = node.body.map((stmt) => `  ${stmt.accept(this)}`).join('\n');
     return `while (${node.condition.accept(this)}) {\n${body}\n}`;
   }
 
@@ -255,6 +341,77 @@ export class OMLToTypeScriptVisitor implements ASTVisitor {
   visitReturnNode(node: ReturnNode): string {
     return `return ${node.returnValue.accept(this)};`;
   }
+
+  visitIndexAccessNode(node: IndexAccessNode): string {
+    const object = node.object.accept(this);
+    const index = node.index.accept(this);
+    return `${object}[${index}]`;
+  }
+
+  visitIndexAssignmentNode(node: IndexAssignmentNode): string {
+    const object = node.object.accept(this);
+    const index = node.index.accept(this);
+    const value = node.value.accept(this);
+
+    if (typeof object === 'string') {
+      if (
+        node.value instanceof LiteralNode &&
+        typeof node.value.value === 'string'
+      ) {
+        if (node.value.value.length !== 1) {
+          throw new Error(
+            `Value for string assignment must be a single character.`
+          );
+        }
+      } else if (typeof value !== 'string' || value.length !== 1) {
+        throw new Error(
+          `Value for string assignment must be a single character.`
+        );
+      }
+    }
+
+    return `${object}[${index}] = ${value};`;
+  }
+
+  visitTypeConstructionNode(node: TypeConstructionNode): string {
+    const type = this.mapType(node.type);
+    const values = node.values.map(value => value.accept(this));
+  
+    if (node.type.startsWith('array<')) {
+      const elementType = this.mapType(node.type.slice(6, -1));
+      if (values.length === 1) {
+        const size = values[0];
+        return `new Array<${elementType}>(${size})`;
+      } else {
+        return `new Array<${elementType}>(${values.join(', ')})`;
+      }
+    }
+  
+    if (type === 'string') {
+      if (values.length === 1) {
+        const value = values[0];
+        if (values[0] instanceof LiteralNode && typeof values[0].value === 'number') {
+          return `' '.repeat(${values[0].value})`;
+        }
+        return `String(${value})`;
+      }
+    }
+  
+    throw new Error(`Unsupported type construction: ${type}`);
+  }
+
+  visitStructTypeNode(node: StructTypeNode): string {
+    const fields = Object.entries(node.fields)
+      .map(([key, type]) => `${key}: ${this.mapType(type)}`)
+      .join('; ');
+    return `type ${node.name} = { ${fields} };`;
+  }
+
+  visitPropertyAccessNode(node: PropertyAccessNode): string {
+    const object = node.object.accept(this);
+    const property = node.property;
+    return `${object}.${property}`;
+  }
 }
 
 export class ASTTreeVisitor implements ASTVisitor {
@@ -265,7 +422,7 @@ export class ASTTreeVisitor implements ASTVisitor {
   }
 
   visitProgramNode(node: ProgramNode): string {
-    return node.statements.map(stmt => this.visitNode(stmt)).join('\n');
+    return node.statements.map((stmt) => this.visitNode(stmt)).join('\n');
   }
 
   visitVariableDeclarationNode(node: VariableDeclarationNode): string {
@@ -277,7 +434,10 @@ export class ASTTreeVisitor implements ASTVisitor {
     // Manually handle left and right without relying on `accept`
     const currentDepth = this.depth;
     const left = this.visitNodeDirectly(node.left, currentDepth + 2);
-    const right = this.visitNodeDirectly(node.right, currentDepth + (node.right instanceof BinaryExpressionNode ? 3 : 2));
+    const right = this.visitNodeDirectly(
+      node.right,
+      currentDepth + (node.right instanceof BinaryExpressionNode ? 3 : 2)
+    );
 
     // Generate formatted output
     let result = `${this.indent()}${node.operator} (\n`;
@@ -287,15 +447,17 @@ export class ASTTreeVisitor implements ASTVisitor {
   }
 
   visitFunctionDeclarationNode(node: FunctionDeclarationNode): string {
-    const signature = `${this.indent()}@${node.name}(${node.parameters.join(', ')}) -> ${node.returnType}\n`;
+    const signature = `${this.indent()}@${node.name}(${node.parameters.join(
+      ', '
+    )}) -> ${node.returnType}\n`;
     this.depth++;
-    const body = `${node.body.map(stmt => this.visitNode(stmt)).join('\n')}`;
+    const body = `${node.body.map((stmt) => this.visitNode(stmt)).join('\n')}`;
     this.depth--;
     return signature + body;
   }
 
   visitFunctionCallNode(node: FunctionCallNode): string {
-    const args = node.args.map(arg => this.visitNode(arg)).join(', ');
+    const args = node.args.map((arg) => this.visitNode(arg)).join(', ');
     return `${this.indent()}${node.name}(${args})`;
   }
 
@@ -308,9 +470,13 @@ export class ASTTreeVisitor implements ASTVisitor {
   visitBranchingNode(node: BranchingNode): string {
     let result = `${this.indent()}if (${this.visitNode(node.condition)})\n`;
     this.depth++;
-    result += `${this.indent()}then\n${node.trueBranch.map(stmt => this.visitNode(stmt)).join('\n')}`;
+    result += `${this.indent()}then\n${node.trueBranch
+      .map((stmt) => this.visitNode(stmt))
+      .join('\n')}`;
     if (node.falseBranch.length > 0) {
-      result += `\n${this.indent()}else\n${node.falseBranch.map(stmt => this.visitNode(stmt)).join('\n')}`;
+      result += `\n${this.indent()}else\n${node.falseBranch
+        .map((stmt) => this.visitNode(stmt))
+        .join('\n')}`;
     }
     this.depth--;
     return result;
@@ -319,7 +485,7 @@ export class ASTTreeVisitor implements ASTVisitor {
   visitLoopNode(node: LoopNode): string {
     let result = `${this.indent()}while (${this.visitNode(node.condition)})\n`;
     this.depth++;
-    result += `${node.body.map(stmt => this.visitNode(stmt)).join('\n')}`;
+    result += `${node.body.map((stmt) => this.visitNode(stmt)).join('\n')}`;
     this.depth--;
     return result;
   }
@@ -343,29 +509,40 @@ export class ASTTreeVisitor implements ASTVisitor {
     return result;
   }
 
-  visitObjectAccessNode(node: ObjectAccessNode): string {
-    return `${this.indent()}${this.visitNode(node.object)}->${node.property}`;
-  }
-
   visitOutputNode(node: OutputNode): string {
     return `${this.indent()}^^ ${this.visitNode(node.value)}`;
   }
 
   visitUnaryExpressionNode(node: UnaryExpressionNode): string {
-    // Оператор (унарний)
     const operator = node.operator;
-  
-    // Операнд, який має бути відображений після оператора
     const operand = node.operand.accept(this);
-  
-    // Формуємо відображення унарного виразу
-    return `${this.indent()}${operator} ${operand}`;  // Наприклад, '- 5' або '! isTrue'
+
+    return `${this.indent()}${operator} ${operand}`;
   }
 
   visitReturnNode(node: ReturnNode): string {
-    const returnValue = node.returnValue.accept(this); // Отримуємо значення для повернення
-    return `${this.indent()}@ <- ${returnValue}`; // Формуємо рядок для повернення
-  }  
+    const returnValue = node.returnValue.accept(this);
+    return `${this.indent()}@ <- ${returnValue}`;
+  }
+
+  visitIndexAccessNode(node: IndexAccessNode): string {
+    const object = this.visitNode(node.object);
+    const index = this.visitNode(node.index);
+    return `${this.indent()}${object}->(${index})`;
+  }
+
+  visitIndexAssignmentNode(node: IndexAssignmentNode): string {
+    const object = this.visitNode(node.object);
+    const index = this.visitNode(node.index);
+    const value = this.visitNode(node.value);
+    return `${this.indent()}${object}->(${index}) = ${value}`;
+  }
+
+  visitTypeConstructionNode(node: TypeConstructionNode): string {
+    const type = node.type;
+    const values = node.values.map(value => this.visitNode(value)).join(', ');
+    return `${this.indent()}${type}(${values})`;
+  }
 
   // New helper methods to visit nodes directly
   private visitNode(node: ASTNode): string {
@@ -397,43 +574,66 @@ export class ASTTreeVisitor implements ASTVisitor {
 
     return result;
   }
+
+  visitStructTypeNode(node: StructTypeNode): string {
+    const fields = Object.entries(node.fields)
+      .map(([key, type]) => `${this.indent()}${key}: ${type};`)
+      .join('\n');
+    return `${this.indent()}type ${node.name} = {\n${fields}\n${this.indent()}};`;
+  }
+
+  visitPropertyAccessNode(node: PropertyAccessNode): string {
+    const object = this.visitNode(node.object);
+    const property = node.property;
+    return `${this.indent()}${object}->${property}`;
+  }
 }
 
 export class OMLInterpreter implements ASTVisitor {
-  private variables: Map<string, any> = new Map(); // Для збереження змінних
-  private functions: Map<string, FunctionDeclarationNode> = new Map(); // Для збереження оголошених функцій
-  private output: string[] = []; // Для збереження результату виведення
+  private variables: Map<string, any> = new Map();
+  private functions: Map<string, FunctionDeclarationNode> = new Map();
+  private output: string[] = [];
+  private structTypes: Map<string, { [key: string]: string }> = new Map();
 
   visitProgramNode(node: ProgramNode): any {
     for (const stmt of node.statements) {
-      stmt.accept(this); // Виконуємо кожну інструкцію
+      stmt.accept(this);
     }
   }
 
   visitVariableDeclarationNode(node: VariableDeclarationNode): any {
-    const value = node.value ? node.value.accept(this) : null; // Отримуємо початкове значення, якщо є
-    this.variables.set(node.name, value); // Зберігаємо змінну
+    const value = node.value ? node.value.accept(this) : null;
+    this.variables.set(node.name, value);
   }
 
   visitAssignmentNode(node: AssignmentNode): any {
-    const value = node.value.accept(this); // Обчислюємо праву частину
-    if (node.nameOrObjectPath instanceof ObjectAccessNode) {
-      this.visitObjectAccessAssignment(node.nameOrObjectPath, value);
+    const value = node.value.accept(this);
+    if (node.nameOrObjectPath instanceof PropertyAccessNode) {
+      this.visitPropertyAccessAssignment(node.nameOrObjectPath, value);
     } else {
-      this.variables.set((node.nameOrObjectPath as IdentifierNode).name, value); // Присвоєння змінній
+      this.variables.set((node.nameOrObjectPath as IdentifierNode).name, value);
+    }
+  }
+
+  visitPropertyAccessAssignment(node: PropertyAccessNode, value: any): any {
+    const object = node.object.accept(this);
+    if (typeof object === 'object' && object !== null) {
+      object[node.property] = value;
+    } else {
+      throw new Error(`Cannot assign property '${node.property}' on non-object type.`);
     }
   }
 
   visitBinaryExpressionNode(node: BinaryExpressionNode): any {
     const left = node.left.accept(this);
     const right = node.right.accept(this);
-    
+
     if (node.operator === '.') {
-      return `${left}${right}`;  // Перетворюємо на рядки та конкатенуємо
+      return `${left}${right}`; // Strings concatenation
     }
 
     switch (node.operator) {
-      // Математичні операції
+      // Math operations
       case '+':
         return left + right;
       case '-':
@@ -442,14 +642,14 @@ export class OMLInterpreter implements ASTVisitor {
         return left * right;
       case '/':
         return left / right;
-        
-      // Логічні операції
+
+      // Logical operations
       case '&&':
         return left && right;
       case '||':
         return left || right;
-        
-      // Оператори порівняння
+
+      // Comparison operations
       case '==':
         return left == right;
       case '!=':
@@ -462,44 +662,41 @@ export class OMLInterpreter implements ASTVisitor {
         return left >= right;
       case '<=':
         return left <= right;
-        
+
       default:
         throw new Error(`Unsupported operator ${node.operator}`);
     }
-  }  
-
-  // Оголошення функцій
-  visitFunctionDeclarationNode(node: FunctionDeclarationNode): any {
-    this.functions.set(node.name, node); // Зберігаємо функцію у функціях
   }
 
-  // Виклик функцій
+  visitFunctionDeclarationNode(node: FunctionDeclarationNode): any {
+    this.functions.set(node.name, node);
+  }
+
   visitFunctionCallNode(node: FunctionCallNode): any {
     const func = this.functions.get(node.name);
     if (!func) {
       throw new Error(`Function ${node.name} is not defined`);
     }
 
-    // Створюємо новий контекст для параметрів функції
-    const oldVariables = new Map(this.variables); // Зберігаємо попередній контекст змінних
+    // Create a new scope for the function
+    const oldVariables = new Map(this.variables); // Save the previous context
     for (let i = 0; i < func.parameters.length; i++) {
       const param = func.parameters[i];
-      const argValue = node.args[i].accept(this); // Обчислюємо аргументи
-      this.variables.set(param.name, argValue); // Присвоюємо аргументи параметрам
+      const argValue = node.args[i].accept(this);
+      this.variables.set(param.name, argValue);
     }
 
-    // Виконуємо тіло функції
+    // Execute the function body
     let result = null;
     try {
       for (const stmt of func.body) {
         stmt.accept(this);
       }
     } catch (returnResult) {
-      result = returnResult; // Отримуємо результат із виклику ReturnNode
+      result = returnResult; // Get a return value
     }
 
-    // Відновлюємо попередній контекст змінних
-    this.variables = oldVariables;
+    this.variables = oldVariables; // Restore the previous context
 
     return result;
   }
@@ -508,11 +705,11 @@ export class OMLInterpreter implements ASTVisitor {
     const condition = node.condition.accept(this);
     if (condition) {
       for (const stmt of node.trueBranch) {
-        stmt.accept(this); // Виконуємо істинну гілку
+        stmt.accept(this); // True branch
       }
     } else {
       for (const stmt of node.falseBranch) {
-        stmt.accept(this); // Виконуємо хибну гілку
+        stmt.accept(this); // False branch
       }
     }
   }
@@ -520,49 +717,39 @@ export class OMLInterpreter implements ASTVisitor {
   visitLoopNode(node: LoopNode): any {
     while (node.condition.accept(this)) {
       for (const stmt of node.body) {
-        stmt.accept(this); // Виконуємо тіло циклу
+        stmt.accept(this);
       }
     }
   }
 
   visitLiteralNode(node: LiteralNode): any {
-    return node.value; // Повертаємо літеральне значення (число, рядок тощо)
+    return node.value; // Literal (number, string, bool)
   }
 
   visitIdentifierNode(node: IdentifierNode): any {
-    return this.variables.get(node.name); // Повертаємо значення змінної
+    return this.variables.get(node.name);
   }
 
   visitObjectLiteralNode(node: ObjectLiteralNode): any {
     const obj: any = {};
     for (const [key, valueNode] of Object.entries(node.properties)) {
-      obj[key] = valueNode.accept(this); // Обчислюємо кожну властивість
+      obj[key] = valueNode.accept(this);
     }
-    return obj; // Повертаємо об'єкт
-  }
-
-  visitObjectAccessNode(node: ObjectAccessNode): any {
-    const object = node.object.accept(this);
-    return object[node.property]; // Отримуємо значення властивості об'єкта
-  }
-
-  visitObjectAccessAssignment(node: ObjectAccessNode, value: any): any {
-    const object = node.object.accept(this);
-    object[node.property] = value; // Присвоюємо значення властивості
+    return obj;
   }
 
   visitOutputNode(node: OutputNode): any {
     const value = node.value.accept(this);
-    this.output.push(value); // Зберігаємо результат виведення
+    this.output.push(value);
   }
 
   visitUnaryExpressionNode(node: UnaryExpressionNode): any {
     const operand = node.operand.accept(this);
     switch (node.operator) {
       case '-':
-        return -operand; // Унарний мінус
+        return -operand; // Unary minus
       case '!':
-        return !operand; // Логічне заперечення
+        return !operand; // Logical Not
       default:
         throw new Error(`Unsupported unary operator ${node.operator}`);
     }
@@ -570,10 +757,137 @@ export class OMLInterpreter implements ASTVisitor {
 
   visitReturnNode(node: ReturnNode): any {
     const returnValue = node.returnValue.accept(this);
-    throw returnValue; // Використовуємо виключення для зупинки виконання функції
-  }   
+    throw returnValue;
+  }
+
+  visitIndexAccessNode(node: IndexAccessNode): any {
+    const object = node.object.accept(this);
+    const index = node.index.accept(this);
+
+    if (typeof object === 'string') {
+      if (typeof index !== 'number' || index < 0 || index >= object.length) {
+        throw new Error(`Index out of bounds`);
+      }
+      return object[index];
+    }
+
+    throw new Error(`Unsupported index access on type '${typeof object}'`);
+  }
+
+  visitIndexAssignmentNode(node: IndexAssignmentNode): any {
+    const object = node.object.accept(this);
+    const index = node.index.accept(this);
+    const value = node.value.accept(this);
+
+    if (typeof object === 'string') {
+      if (typeof index !== 'number' || index < 0 || index >= object.length) {
+        throw new Error(`Index out of bounds`);
+      }
+      if (typeof value !== 'string' || value.length !== 1) {
+        throw new Error(
+          `Value for string assignment must be a single character`
+        );
+      }
+      const characters = object.split('');
+      characters[index] = value;
+      this.variables.set(
+        (node.object as IdentifierNode).name,
+        characters.join('')
+      );
+      return;
+    }
+
+    throw new Error(`Unsupported index assignment on type '${typeof object}'`);
+  }
+
+  visitTypeConstructionNode(node: TypeConstructionNode): any {
+    const type = node.type;
+    const values = node.values.map(value => value.accept(this));
+
+    if (type.startsWith('array<')) {
+      const elementType = type.slice(6, -1);
+      if (values.length === 1) {
+        const size = values[0];
+        if (typeof size !== 'number' || size < 0) {
+          throw new Error(`Array size must be a non-negative number, but got '${size}'.`);
+        }
+        const defaultValue = this.getDefaultValue(elementType);
+        return new Array(size).fill(defaultValue);
+      } else {
+        return values;
+      }
+    }
+
+    if (type === 'string') {
+      if (values.length !== 1) {
+        throw new Error(`String constructor expects one argument, but got ${values.length}.`);
+      }
+      const value = values[0];
+      if (typeof value === 'number') {
+        if (value < 1) {
+          throw new Error(`String length must be greater than 0`);
+        }
+        return ' '.repeat(value);
+      }
+      if (typeof value === 'string') {
+        return `${value}`;
+      }
+    }
+
+    throw new Error(`Unsupported type construction: ${type}`);
+  }
+
+  private getDefaultValue(type: string): any {
+    switch (type) {
+      case 'number':
+        return 0;
+      case 'string':
+        return '';
+      case 'boolean':
+        return false;
+      case 'object':
+      case 'array':
+        return null;
+      default:
+        throw new Error(`Unsupported type: ${type}`);
+    }
+  }
+
+  visitStructTypeNode(node: StructTypeNode): void {
+    if (this.structTypes.has(node.name)) {
+      throw new Error(`Struct type '${node.name}' is already declared.`);
+    }
+    this.structTypes.set(node.name, node.fields);
+  }
+
+  visitPropertyAccessNode(node: PropertyAccessNode): any {
+    const object = node.object.accept(this);
+
+    if (typeof object === 'string' && node.property === 'length') {
+      if (node.isAssignment) {
+        throw new Error(`Cannot assign to read-only property 'length' of type 'string'.`);
+      }
+      return object.length;
+    }
+
+    if (Array.isArray(object) && node.property === 'length') {
+      if (node.isAssignment) {
+        throw new Error(`Cannot assign to read-only property 'length' of type 'array'.`);
+      }
+      return object.length;
+    }
+
+    if (typeof object === 'object' && object !== null) {
+      if (!(node.property in object)) {
+        throw new Error(`Property '${node.property}' does not exist on object.`);
+      }
+      return object[node.property];
+    }
+
+    throw new Error(`Unsupported property access on type '${typeof object}'.`);
+  }
 
   getOutput(): string {
-    return this.output.join('\n'); // Повертаємо результат виведення
+    return this.output.join('\n');
   }
 }
