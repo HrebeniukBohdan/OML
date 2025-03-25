@@ -61,8 +61,6 @@
 <type_construction> ::= "string" "(" <expression> ")"
                       | "array" "<" <type> ">" "(" <arguments> ")"
 
-<string_method> ::= "substring" | "replace" | "toUpper" | "toLower"
-
 <parameters> ::= "none"
                | "<" <parameter> ("," <parameter>)* ">"
 

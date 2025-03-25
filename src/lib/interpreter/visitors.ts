@@ -196,11 +196,14 @@ export class OMLToTypeScriptVisitor implements ASTVisitor {
     if (type.startsWith('object<')) {
       return type.slice(7, -1); // Extract the object type name
     }
+    if (type.startsWith('array<')) {
+      return 'Array<' + this.mapType(type.slice(6, -1)) + '>';
+    }
+    
     const typeMapping: { [key: string]: string } = {
       number: 'number',
       string: 'string',
       bool: 'boolean',
-      array: 'any[]',
       void: 'void',
     };
     return typeMapping[type] || 'any';
@@ -374,8 +377,8 @@ export class OMLToTypeScriptVisitor implements ASTVisitor {
     const type = this.mapType(node.type);
     const values = node.values.map(value => value.accept(this));
   
-    if (type.startsWith('array<')) {
-      const elementType = type.slice(6, -1);
+    if (node.type.startsWith('array<')) {
+      const elementType = this.mapType(node.type.slice(6, -1));
       if (values.length === 1) {
         const size = values[0];
         return `new Array<${elementType}>(${size})`;
@@ -387,10 +390,10 @@ export class OMLToTypeScriptVisitor implements ASTVisitor {
     if (type === 'string') {
       if (values.length === 1) {
         const value = values[0];
-        if (typeof value === 'number') {
-          return `' '.repeat(${value})`;
+        if (values[0] instanceof LiteralNode && typeof values[0].value === 'number') {
+          return `' '.repeat(${values[0].value})`;
         }
-        return `${value}`;
+        return `String(${value})`;
       }
     }
   

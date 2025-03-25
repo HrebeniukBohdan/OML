@@ -500,11 +500,7 @@ export class Parser {
   }
 
   private parseTypeConstruction(): TypeConstructionNode {
-    const type = this.consume(
-      TokenType.Type,
-      null,
-      'Expect type'
-    ).value;
+    const type = this.parseType();
 
     this.consume(
       TokenType.Punctuation,

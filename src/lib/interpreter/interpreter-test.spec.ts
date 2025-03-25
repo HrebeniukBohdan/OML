@@ -345,7 +345,6 @@ describe("OML Interpreter Functional Tests", () => {
         expect(output).toBe('o');
       });
     
-      /*
       it("should access the length of a string", () => {
         const code = `
           +str~string;
@@ -358,6 +357,7 @@ describe("OML Interpreter Functional Tests", () => {
         expect(output).toBe('5');
       });
     
+      /*
       it("should call substring method on a string", () => {
         const code = `
           +str~string;
@@ -626,6 +626,145 @@ describe("OML Interpreter Functional Tests", () => {
         expect(output).toBe('End of test');
       });
   
+    });
+
+    describe("Object and struct construction and manipulation tests", () => {
+      it("should create an object with specified values", () => {
+        const code = `
+          $myAddress::{ 
+            street: string;
+            houseNumber: number;
+            apptNumber: number;
+          }
+    
+          $myObj::{ 
+            name: string;
+            age: number;
+            address: object<myAddress>;
+          }
+    
+          +obj~object<myObj> = (
+            name: "Test User",
+            age: 25,
+            address: ( street: "New-York Avenue", houseNumber: 29, apptNumber: 89 )
+          );
+    
+          ^^obj->name;
+          ^^obj->age;
+          ^^obj->address->street;
+          ^^obj->address->houseNumber;
+        `;
+        const output = createInterpreter(code).getOutput();
+        expect(output).toBe('Test User\n25\nNew-York Avenue\n29');
+      });
+    
+      /*
+      it("should modify a property of an object", () => {
+        const code = `
+          $myAddress::{ 
+            street: string;
+            houseNumber: number;
+            apptNumber: number;
+          }
+    
+          $myObj::{ 
+            name: string;
+            age: number;
+            address: object<myAddress>;
+          }
+    
+          +obj~object<myObj> = (
+            name: "Test User",
+            age: 25,
+            address: ( street: "New-York Avenue", houseNumber: 29, apptNumber: 89 )
+          );
+    
+          obj->name = "Updated User";
+          ^^obj->name;
+        `;
+        const output = createInterpreter(code).getOutput();
+        expect(output).toBe('Updated User');
+      });
+    
+      it("should throw an error for accessing non-existent property", () => {
+        const code = `
+          $myAddress::{ 
+            street: string;
+            houseNumber: number;
+            apptNumber: number;
+          }
+    
+          $myObj::{ 
+            name: string;
+            age: number;
+            address: object<myAddress>;
+          }
+    
+          +obj~object<myObj> = (
+            name: "Test User",
+            age: 25,
+            address: ( street: "New-York Avenue", houseNumber: 29, apptNumber: 89 )
+          );
+    
+          ^^obj->nonExistentProperty;
+        `;
+        expect(() => createInterpreter(code)).toThrow("Property 'nonExistentProperty' does not exist on object.");
+      });*/
+    });
+
+    describe("Array construction and manipulation tests", () => {
+      it("should create an array with default values", () => {
+        const code = `
+          +arr~array<number>;
+          <-arr = array<number>(5);
+          ^^arr;
+        `;
+        const output = createInterpreter(code).getOutput();
+        expect(output).toBe('0,0,0,0,0');
+      });
+    
+      /*
+      it("should create an array with specified default value", () => {
+        const code = `
+          +arr~array<number>;
+          <-arr = array<number>(5, 42);
+          ^^arr;
+        `;
+        const output = createInterpreter(code).getOutput();
+        expect(output).toBe('42,42,42,42,42');
+      });
+      */
+    
+      it("should create an array with initial values", () => {
+        const code = `
+          +arr~array<number>;
+          <-arr = array<number>(1, 3, 5, 2, 4);
+          ^^arr;
+        `;
+        const output = createInterpreter(code).getOutput();
+        expect(output).toBe('1,3,5,2,4');
+      });
+    
+      it("should access and modify an element in an array", () => {
+        const code = `
+          +arr~array<number>;
+          <-arr = array<number>(5);
+          arr->(2) = 42;
+          ^^arr->(2);
+        `;
+        const output = createInterpreter(code).getOutput();
+        expect(output).toBe('42');
+      });
+    
+      it("should throw an error for out of bounds index access", () => {
+        const code = `
+          +arr~array<number>;
+          <-arr = array<number>(5, 0);
+          arr->(10) = 42;
+          ^^arr->(10);
+        `;
+        expect(() => createInterpreter(code)).toThrow("Index out of bounds");
+      });
     });
 
     it("should be defined and equal 5", () => {

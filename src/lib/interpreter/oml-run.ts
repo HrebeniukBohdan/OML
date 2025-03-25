@@ -4,6 +4,34 @@ import { JSONVisitor, OMLInterpreter, OMLToTypeScriptVisitor } from './visitors'
 import { SemanticAnalyzer } from './semantic';
 
 const omlCode = `
+  $Pet::{ 
+    name: string;
+    type: string;
+    age: number;
+  }
+  +arr~array<number> = array<number>(1, 2, 3, 4, 5);
+  +pets~array<object<Pet>> = array<object<Pet>>(
+    (name: "Rex", type: "Dog", age: 8),
+    (name: "Mittens", type: "Cat", age: 2),
+    (name: "Buddy", type: "Dog", age: 5)
+  );
+
+  ^^ "arr:";
+  ^^ "length = " . arr -> length;
+  ^^ arr;
+
+  ^^ "pets:";
+  ^^ "length = " . pets -> length;
+`;
+
+`
+  +str~string = string("Hello, World!");
+
+  ^^ str -> (7);
+  ^^ str -> length;
+`;
+
+`
   $myAddress::{ 
     street: string;
     houseNumber: number;
