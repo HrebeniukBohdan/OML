@@ -658,7 +658,6 @@ describe("OML Interpreter Functional Tests", () => {
         expect(output).toBe('Test User\n25\nNew-York Avenue\n29');
       });
     
-      /*
       it("should modify a property of an object", () => {
         const code = `
           $myAddress::{ 
@@ -679,7 +678,7 @@ describe("OML Interpreter Functional Tests", () => {
             address: ( street: "New-York Avenue", houseNumber: 29, apptNumber: 89 )
           );
     
-          obj->name = "Updated User";
+          <-obj->name = "Updated User";
           ^^obj->name;
         `;
         const output = createInterpreter(code).getOutput();
@@ -706,10 +705,10 @@ describe("OML Interpreter Functional Tests", () => {
             address: ( street: "New-York Avenue", houseNumber: 29, apptNumber: 89 )
           );
     
-          ^^obj->nonExistentProperty;
+          ^^obj->unknownProperty;
         `;
-        expect(() => createInterpreter(code)).toThrow("Property 'nonExistentProperty' does not exist on object.");
-      });*/
+        expect(() => createInterpreter(code)).toThrow("Property 'unknownProperty' does not exist on type 'object<myObj>'.");
+      });
     });
 
     describe("Array construction and manipulation tests", () => {

@@ -103,6 +103,34 @@ const omlCode = `
 `;
 
 `
+  $myAddress::{ 
+    street: string;
+    houseNumber: number;
+    apptNumber: number;
+  }
+
+  $myObj::{ 
+    name: string;
+    age: number;
+    address: object<myAddress>;
+  }
+
+  +obj~object<myObj> = (
+    name: "Test User",
+    age: 25,
+    address: ( street: "New-York Avenue", houseNumber: 29, apptNumber: 89 )
+  );
+
+  +a~number;
+  <-a = 10;
+
+  <-obj->address->houseNumber = 42 + a;
+  <-obj->name = "Updated User";
+  ^^obj->address->houseNumber;
+  ^^obj->name;
+`;
+
+`
   +str~string = string("Hello, World!");
 
   ^^ str -> (7);

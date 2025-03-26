@@ -101,16 +101,28 @@ export class SemanticAnalyzer implements ASTVisitor {
   }
 
   visitAssignmentNode(node: AssignmentNode): void {
-    const varName = (node.nameOrObjectPath as IdentifierNode).name;
-    const expectedType = this.lookupVariable(varName);
-    if (!expectedType) {
-      throw new Error(`Undeclared variable '${varName}'.`);
-    }
-    const valueType = node.value.accept(this);
-    if (valueType !== expectedType) {
-      throw new Error(
-        `Type mismatch: expected '${expectedType}', got '${valueType}' in assignment to '${varName}'.`
-      );
+    if (node.nameOrObjectPath instanceof IdentifierNode) {
+      const varName = node.nameOrObjectPath.name;
+      const expectedType = this.lookupVariable(varName);
+      if (!expectedType) {
+        throw new Error(`Undeclared variable '${varName}'.`);
+      }
+      const valueType = node.value.accept(this);
+      if (valueType !== expectedType) {
+        throw new Error(
+          `Type mismatch: expected '${expectedType}', got '${valueType}' in assignment to '${varName}'.`
+        );
+      }
+    } else if (node.nameOrObjectPath instanceof PropertyAccessNode) {
+      const propertyType = node.nameOrObjectPath.accept(this);
+      const valueType = node.value.accept(this);
+      if (propertyType !== valueType) {
+        throw new Error(
+          `Type mismatch: expected '${propertyType}', got '${valueType}' in assignment to property '${node.nameOrObjectPath.property}'.`
+        );
+      }
+    } else {
+      throw new Error(`Unsupported assignment target.`);
     }
   }
 
@@ -468,6 +480,10 @@ export class SemanticAnalyzer implements ASTVisitor {
         throw new Error(`Property '${node.property}' does not exist on type '${objectType}'.`);
       }
       return propertyType;
+    }
+
+    if (node.object instanceof PropertyAccessNode) {
+      return this.visitPropertyAccessNode(node.object);
     }
 
     throw new Error(`Unsupported property access on type '${objectType}'.`);
