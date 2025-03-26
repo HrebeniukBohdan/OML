@@ -723,18 +723,6 @@ describe("OML Interpreter Functional Tests", () => {
         expect(output).toBe('0,0,0,0,0');
       });
     
-      /*
-      it("should create an array with specified default value", () => {
-        const code = `
-          +arr~array<number>;
-          <-arr = array<number>(5, 42);
-          ^^arr;
-        `;
-        const output = createInterpreter(code).getOutput();
-        expect(output).toBe('42,42,42,42,42');
-      });
-      */
-    
       it("should create an array with initial values", () => {
         const code = `
           +arr~array<number>;
@@ -759,7 +747,7 @@ describe("OML Interpreter Functional Tests", () => {
       it("should throw an error for out of bounds index access", () => {
         const code = `
           +arr~array<number>;
-          <-arr = array<number>(5, 0);
+          <-arr = array<number>(5);
           arr->(10) = 42;
           ^^arr->(10);
         `;
@@ -777,17 +765,6 @@ describe("OML Interpreter Functional Tests", () => {
       const output = createInterpreter(code).getOutput();
       expect(output).toBe('5');
     });
-
-    /*it("should be defined and equal true", () => {
-      const code = `
-        +a~bool;
-        <-a = true;
-        ^^a;
-      `;
-
-      const output = createInterpreter(code).getOutput();
-      expect(output).toBe('true');
-    });*/
 
     it("should be defined and equal 'text'", () => {
       const code = `

@@ -4,58 +4,6 @@ import { JSONVisitor, OMLInterpreter, OMLToTypeScriptVisitor } from './visitors'
 import { SemanticAnalyzer } from './semantic';
 
 const omlCode = `
-  $Pet::{ 
-    name: string;
-    type: string;
-    age: number;
-  }
-  +arr~array<number> = array<number>(1, 2, 3, 4, 5);
-  +pets~array<object<Pet>> = array<object<Pet>>(
-    (name: "Rex", type: "Dog", age: 8),
-    (name: "Mittens", type: "Cat", age: 2),
-    (name: "Buddy", type: "Dog", age: 5)
-  );
-
-  ^^ "arr:";
-  ^^ "length = " . arr -> length;
-  ^^ arr;
-
-  ^^ "pets:";
-  ^^ "length = " . pets -> length;
-`;
-
-`
-  +str~string = string("Hello, World!");
-
-  ^^ str -> (7);
-  ^^ str -> length;
-`;
-
-`
-  $myAddress::{ 
-    street: string;
-    houseNumber: number;
-    apptNumber: number;
-  }
-
-  $myObj::{ 
-    name: string;
-    age: number;
-    address: object<myAddress>;
-  }
-
-  +obj~object<myObj> = (
-    name: "Test User",
-    age: 25,
-    address: ( street: "New-York Avenue", houseNumber: 29, apptNumber: 89 )
-  );
-
-  ^^ obj -> name . " is " . obj -> age . " years old.";
-  ^^ obj -> address -> street;
-  ^^ obj -> address -> houseNumber;
-`;
-
-`
   +a~number;
 
   @abs::<x~number> -> number |
@@ -80,7 +28,7 @@ const omlCode = `
     ~
 
     ? [num < 0] | 
-        @sqrt <- (-1); // Замість NaN
+        @sqrt <- (-1); // Instead of NaN
     ~
     
     +approx~number;
@@ -128,29 +76,61 @@ const omlCode = `
   <>solveQuadratic::(1, 7, -8);
 `;
 
-/*
 `
-  +a~number = -5;
-  // <-a = -10 -10;
-  ^^ a;
+  $Pet::{ 
+    name: string;
+    type: string;
+    age: number;
+  }
+  +arr~array<number> = array<number>(1, 2, 3, 4, 5);
+  +pets~array<object<Pet>> = array<object<Pet>>(
+    (name: "Rex", type: "Dog", age: 8),
+    (name: "Mittens", type: "Cat", age: 2),
+    (name: "Buddy", type: "Dog", age: 5)
+  );
+
+  ^^ "arr:";
+  ^^ "length = " . arr -> length;
+  ^^ arr;
+
+  ^^ "pets:";
+  ^^ "length = " . pets -> length;
+
+  +arr1~array<number>;
+  <-arr1 = array<number>(5);
+  arr1->(2) = 42;
+  ^^arr1->(2);
 `;
 
 `
-@main::none -> void |
-  +a~number;
-  <-a = 10.5;
-  +obj~object;
-  <-obj = (
-    name: "Test",
-    address: ( street: "New-York Avenue", houseNumber: 29, apptNumber: 89 ), 
-    value: 123
+  +str~string = string("Hello, World!");
+
+  ^^ str -> (7);
+  ^^ str -> length;
+`;
+
+`
+  $myAddress::{ 
+    street: string;
+    houseNumber: number;
+    apptNumber: number;
+  }
+
+  $myObj::{ 
+    name: string;
+    age: number;
+    address: object<myAddress>;
+  }
+
+  +obj~object<myObj> = (
+    name: "Test User",
+    age: 25,
+    address: ( street: "New-York Avenue", houseNumber: 29, apptNumber: 89 )
   );
-  +b~number;
-  <-b = obj -> value;
-  <-obj -> value = 1000 + (20 - 300) + 50 * 2;
-  <-obj -> address = 1;
-  ^^ "Hello, World!";
-~
+
+  ^^ obj -> name . " is " . obj -> age . " years old.";
+  ^^ obj -> address -> street;
+  ^^ obj -> address -> houseNumber;
 `;
 
 `
@@ -162,7 +142,6 @@ const omlCode = `
   ^^ b - a;
 ~
 `;
-*/
 
 // Tokenization
 const tokenizer = new Tokenizer(omlCode);

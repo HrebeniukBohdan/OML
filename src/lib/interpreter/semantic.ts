@@ -381,6 +381,14 @@ export class SemanticAnalyzer implements ASTVisitor {
       }
       return;
     }
+    if (objectType.startsWith('array<')) {
+      if (indexType !== 'number') {
+        throw new Error(
+          `Index for array must be of type 'number', but got '${indexType}'.`
+        );
+      }
+      return;
+    }
 
     throw new Error(`Unsupported index access on type '${objectType}'.`);
   }
@@ -410,6 +418,14 @@ export class SemanticAnalyzer implements ASTVisitor {
             `Value for string assignment must be a single character, but got '${node.value.value}'.`
           );
         }
+      }
+      return;
+    }
+    if (objectType.startsWith('array<')) {
+      if (indexType !== 'number') {
+        throw new Error(
+          `Index for array must be of type 'number', but got '${indexType}'.`
+        );
       }
       return;
     }

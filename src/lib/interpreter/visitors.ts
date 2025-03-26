@@ -353,24 +353,13 @@ export class OMLToTypeScriptVisitor implements ASTVisitor {
     const index = node.index.accept(this);
     const value = node.value.accept(this);
 
-    if (typeof object === 'string') {
-      if (
-        node.value instanceof LiteralNode &&
-        typeof node.value.value === 'string'
-      ) {
-        if (node.value.value.length !== 1) {
-          throw new Error(
-            `Value for string assignment must be a single character.`
-          );
-        }
-      } else if (typeof value !== 'string' || value.length !== 1) {
-        throw new Error(
-          `Value for string assignment must be a single character.`
-        );
-      }
-    }
-
-    return `${object}[${index}] = ${value};`;
+    // implementation of MutableString concept
+    return `if (typeof ${object} === 'string') {
+      ${object} = new MutableString(${object});
+      ${object}.set(${index}, ${value});
+    } else {
+      ${object}[${index}] = ${value};
+    }`;
   }
 
   visitTypeConstructionNode(node: TypeConstructionNode): string {
@@ -764,7 +753,7 @@ export class OMLInterpreter implements ASTVisitor {
     const object = node.object.accept(this);
     const index = node.index.accept(this);
 
-    if (typeof object === 'string') {
+    if (typeof object === 'string' || Array.isArray(object)) {
       if (typeof index !== 'number' || index < 0 || index >= object.length) {
         throw new Error(`Index out of bounds`);
       }
@@ -794,6 +783,13 @@ export class OMLInterpreter implements ASTVisitor {
         (node.object as IdentifierNode).name,
         characters.join('')
       );
+      return;
+    }
+    if (Array.isArray(object)) {
+      if (typeof index !== 'number' || index < 0 || index >= object.length) {
+        throw new Error(`Index out of bounds`);
+      }
+      object[index] = value;
       return;
     }
 
