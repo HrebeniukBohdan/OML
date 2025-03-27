@@ -14,7 +14,7 @@
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "@org/source": ["src/index.ts"]
+      "@org/oml": ["src/index.ts"]
     }
   },
   "files": [],
