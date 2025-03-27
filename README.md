@@ -1,4 +1,4 @@
-# OML
+# OML (One More programming Language)
 
 An experiment of creating a programming language.
 
