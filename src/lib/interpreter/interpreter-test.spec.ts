@@ -356,56 +356,6 @@ describe("OML Interpreter Functional Tests", () => {
         const output = createInterpreter(code).getOutput();
         expect(output).toBe('5');
       });
-    
-      /*
-      it("should call substring method on a string", () => {
-        const code = `
-          +str~string;
-          <-str = "Hello, world";
-          +sub~string;
-          <-sub = str->substring(7, 12);
-          ^^sub;
-        `;
-        const output = createInterpreter(code).getOutput();
-        expect(output).toBe('world');
-      });
-    
-      it("should call replace method on a string", () => {
-        const code = `
-          +str~string;
-          <-str = "Hello, world";
-          +replaced~string;
-          <-replaced = str->replace("world", "OML");
-          ^^replaced;
-        `;
-        const output = createInterpreter(code).getOutput();
-        expect(output).toBe('Hello, OML');
-      });
-    
-      it("should call toUpper method on a string", () => {
-        const code = `
-          +str~string;
-          <-str = "Hello, world";
-          +upper~string;
-          <-upper = str->toUpper();
-          ^^upper;
-        `;
-        const output = createInterpreter(code).getOutput();
-        expect(output).toBe('HELLO, WORLD');
-      });
-    
-      it("should call toLower method on a string", () => {
-        const code = `
-          +str~string;
-          <-str = "HELLO, WORLD";
-          +lower~string;
-          <-lower = str->toLower();
-          ^^lower;
-        `;
-        const output = createInterpreter(code).getOutput();
-        expect(output).toBe('hello, world');
-      });
-      */
     });
   
     describe("Math expressions", () => {

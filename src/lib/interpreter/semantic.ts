@@ -381,7 +381,7 @@ export class SemanticAnalyzer implements ASTVisitor {
     node.value.accept(this);
   }
 
-  visitIndexAccessNode(node: IndexAccessNode): void {
+  visitIndexAccessNode(node: IndexAccessNode): string {
     const objectType = node.object.accept(this);
     const indexType = node.index.accept(this);
 
@@ -391,7 +391,7 @@ export class SemanticAnalyzer implements ASTVisitor {
           `Index for string must be of type 'number', but got '${indexType}'.`
         );
       }
-      return;
+      return objectType;
     }
     if (objectType.startsWith('array<')) {
       if (indexType !== 'number') {
@@ -399,7 +399,7 @@ export class SemanticAnalyzer implements ASTVisitor {
           `Index for array must be of type 'number', but got '${indexType}'.`
         );
       }
-      return;
+      return objectType.slice(6, -1);
     }
 
     throw new Error(`Unsupported index access on type '${objectType}'.`);

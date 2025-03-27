@@ -4,15 +4,19 @@ import { JSONVisitor, OMLInterpreter, OMLToTypeScriptVisitor } from './visitors'
 import { SemanticAnalyzer } from './semantic';
 
 const omlCode = `
-+counter~number = 1;
-+sum~number = 0;
++arr~array<number> = array<number>(1, 2, 3, 0, 0); // Create an array of size 5 and initialized with array literal
+arr->(3) = 4;
+arr->(4) = 5;
 
-%[counter <= 5] |
-  <-sum = sum + counter;
-  <-counter = counter + 1;
++sum~number = 0;
++i~number = 0;
+
+%[i < 5] |
+    <-sum = sum + arr->(i);
+    <-i = i + 1;
 ~
 
-^^sum; // Output: 15 (1 + 2 + 3 + 4 + 5)
+^^sum; // Output: 6 (1 + 2 + 3 + 4 + 5)
 `;
 
 `
